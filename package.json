@@ -10,6 +10,7 @@
     "start": "npm run start --workspace server",
     "seed": "npm run seed --workspace server",
     "ingest": "npm run ingest --workspace server --",
+    "sources": "npm run sources --workspace server --",
     "test": "npm test --workspace server",
     "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace web"
   },
