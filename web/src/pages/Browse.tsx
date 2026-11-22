@@ -176,8 +176,8 @@ export default function Browse() {
           ))}
         </div>
       </Group>
-      <Group title="Location" defaultOpen={false}>
-        <div className="space-y-1.5">
+      <Group title="Community" defaultOpen={false}>
+        <div className={`space-y-1.5 ${(meta?.counties.length ?? 0) <= 1 ? "hidden" : ""}`}>
           {meta?.counties.map((c) => (
             <label key={c.name} className="flex items-center justify-between gap-2 text-sm">
               <span className="flex items-center gap-2">

@@ -144,8 +144,8 @@ DSCR          = (SDE − capex − manager) ÷ debt service`}
       <Section title="Coverage area & deduplication">
         <div className="grid gap-4 text-sm text-ink-2 md:grid-cols-3">
           <p>
-            <b className="text-ink">Region.</b> Listings within {meta?.region.radiusMiles ?? 60} miles of downtown Columbus: Franklin, Delaware, Licking, Fairfield, Pickaway, Madison, Union, and
-            nearby counties. Anything outside is dropped at ingestion.
+            <b className="text-ink">Region.</b> {(meta?.region.counties ?? ["Franklin"]).join(", ")} County, Ohio: Columbus, Dublin, Westerville, Hilliard, Grove City and
+            the other Franklin County communities. Listings and sales elsewhere are dropped at ingestion (the REGION_COUNTIES setting widens this).
           </p>
           <p>
             <b className="text-ink">Duplicates.</b> Brokers often syndicate one listing to several marketplaces. We merge copies by industry, city, price band, and title keywords, and

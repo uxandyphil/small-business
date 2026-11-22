@@ -83,7 +83,7 @@ export interface Meta {
   industries: string[];
   counties: { name: string; c: number }[];
   cities: { name: string; county: string; c: number }[];
-  region: { center: { lat: number; lng: number }; radiusMiles: number };
+  region: { center: { lat: number; lng: number }; counties: string[] };
   demoMode: boolean;
   realListingCount: number;
   lastUpdated: string | null;

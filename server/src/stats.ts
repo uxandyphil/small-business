@@ -44,6 +44,7 @@ export function dashboardStats(db: DB, asOf: Date, year = asOf.getUTCFullYear())
 
   const byIndustry = groupStats(active, (l) => String(l.industry));
   const byCounty = groupStats(active, (l) => String(l.county ?? "Unknown"));
+  const byCity = groupStats(active, (l) => String(l.city ?? "Unknown"));
 
   const offMarketYear = all.filter((l) => l.status === "off_market" && String(l.status_changed_at) >= yearStart).length;
   const saleRatios = sales
@@ -78,6 +79,7 @@ export function dashboardStats(db: DB, asOf: Date, year = asOf.getUTCFullYear())
     weekly,
     byIndustry,
     byCounty,
+    byCity,
     scatter: active
       .filter((l) => l.asking_price && l.cash_flow_sde)
       .map((l) => ({ id: l.id, title: l.title, industry: l.industry, price: l.asking_price, cashFlow: l.cash_flow_sde, multiple: l.finance.multiple, roi: l.finance.cashOnCashPct })),

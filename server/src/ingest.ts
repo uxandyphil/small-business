@@ -261,7 +261,7 @@ function recordSale(db: DB, sourceId: string, sale: RawSale, now: string, setSta
   }
   if (listingId == null) {
     const loc = resolveLocation({ city: sale.city, county: sale.county });
-    if (!loc.inRegion) return false; // sale outside the Columbus region
+    if (!loc.inRegion) return false; // sale outside the covered counties
   }
   const price = parseMoney(sale.salePrice);
   const date = sale.saleDate ? new Date(sale.saleDate).toISOString().slice(0, 10) : null;

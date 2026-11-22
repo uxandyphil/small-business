@@ -7,7 +7,7 @@
 //   marketplace – a listing marketplace (drops listings when they leave market)
 //   broker      – an independent brokerage site (keeps "Sold" tiles for a while)
 //   records     – independently verified sale records (public filings / press)
-import { PLACES } from "../geo.js";
+import { PLACES, REGION_COUNTIES } from "../geo.js";
 import type { RawListing, RawSale, SourceAdapter } from "./types.js";
 
 function mulberry32(seed: number) {
@@ -50,6 +50,8 @@ const PROFILES: Profile[] = [
 const DESCRIPTORS = ["Established", "Profitable", "Turnkey", "Growing", "Absentee-Run", "Well-Known", "Award-Winning", "Recession-Resistant"];
 const BROKERS = ["Scioto Demo Business Brokers", "Olentangy Demo Advisors", "Buckeye Demo M&A"];
 const OUT_OF_REGION = [
+  { city: "Newark", county: "Licking" },
+  { city: "Delaware", county: "Delaware" },
   { city: "Cleveland", county: "Cuyahoga" },
   { city: "Cincinnati", county: "Hamilton" },
   { city: "Toledo", county: "Lucas" },
@@ -93,7 +95,8 @@ export function demoUniverse(now = new Date("2026-11-20")): DemoBusiness[] {
   const pickOne = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
   const start = new Date("2025-07-01").getTime();
   const end = new Date("2026-11-14").getTime();
-  const weighted = PLACES.flatMap((p) => (p.city === "Columbus" ? Array(10).fill(p) : p.county === "Franklin" ? [p, p] : [p]));
+  const covered = PLACES.filter((p) => REGION_COUNTIES.includes(p.county));
+  const weighted = (covered.length ? covered : PLACES).flatMap((p) => (p.city === "Columbus" ? Array(6).fill(p) : [p]));
   const out: DemoBusiness[] = [];
   for (let i = 0; i < 230; i++) {
     const prof = pickOne(PROFILES);

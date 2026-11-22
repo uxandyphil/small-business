@@ -87,7 +87,10 @@ describe("geo", () => {
   it("resolves Columbus-area places and rejects others", () => {
     expect(resolveLocation({ city: "Dublin, OH" })).toMatchObject({ city: "Dublin", county: "Franklin", inRegion: true, precision: "city" });
     expect(resolveLocation({ city: "Short North" }).city).toBe("Columbus");
-    expect(resolveLocation({ county: "Delaware County" })).toMatchObject({ precision: "county", inRegion: true });
+    expect(resolveLocation({ county: "Franklin County" })).toMatchObject({ precision: "county", inRegion: true });
+    // Coverage is Franklin County only by default
+    expect(resolveLocation({ county: "Delaware County" })).toMatchObject({ precision: "county", inRegion: false });
+    expect(resolveLocation({ city: "Newark" })).toMatchObject({ county: "Licking", inRegion: false });
     expect(resolveLocation({ city: "Cleveland", county: "Cuyahoga" }).inRegion).toBe(false);
     expect(resolveLocation({ city: "Dublin", state: "CA" }).inRegion).toBe(false);
   });

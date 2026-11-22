@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Circle, CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
+import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import { Link } from "react-router-dom";
 import { jitter, money, pct, type MapPoint } from "../lib";
 
-const CENTER: [number, number] = [39.99, -82.99];
+// Franklin County
+const CENTER: [number, number] = [39.97, -83.0];
 
 // Keyless OpenStreetMap tiles by default (fine for light traffic under the OSM
 // tile usage policy). For heavier traffic, set VITE_TILE_URL / VITE_TILE_ATTRIBUTION
@@ -56,22 +57,19 @@ export function MapView({
   hoverId,
   onHover,
   focus,
-  showRadius = false,
 }: {
   points: MapPoint[];
   height?: number | string;
   hoverId?: number | null;
   onHover?: (id: number | null) => void;
   focus?: { lat: number; lng: number } | null;
-  showRadius?: boolean;
 }) {
   const dark = useDark();
   const maxCf = useMemo(() => Math.max(1, ...points.map((p) => p.cashFlow ?? 0)), [points]);
   return (
     <div className={`relative overflow-hidden rounded-xl border border-line ${dark && !CUSTOM_TILES ? "map-dark" : ""}`} style={{ height }}>
-      <MapContainer center={CENTER} zoom={9} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={CENTER} zoom={10} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
         <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
-        {showRadius && <Circle center={CENTER} radius={60 * 1609} pathOptions={{ color: "var(--axis)", weight: 1, dashArray: "4 6", fill: false }} />}
         <FitOnFocus focus={focus} />
         {points
           .filter((p) => p.lat != null && p.lng != null)

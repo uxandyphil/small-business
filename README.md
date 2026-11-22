@@ -1,6 +1,6 @@
 # Columbus Business Tracker
 
-An investment dashboard that tracks businesses for sale, and businesses sold, in Columbus, Ohio and the surrounding counties (within 60 miles of downtown). It puts verified information first. Every figure links back to its source. A business counts as **sold** only when a sale record exists. A listing that just disappears is tracked as **off market, outcome unknown**.
+An investment dashboard that tracks businesses for sale, and businesses sold, in Columbus and the rest of Franklin County, Ohio (other counties can be added with the `REGION_COUNTIES` setting). It puts verified information first. Every figure links back to its source. A business counts as **sold** only when a sale record exists. A listing that just disappears is tracked as **off market, outcome unknown**.
 
 > The repo ships with a **synthetic demo dataset** (fictional businesses, brokers and sales) so the whole pipeline can be exercised without collecting anyone's data. The UI shows a banner while demo data is present.
 

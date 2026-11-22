@@ -4,6 +4,14 @@ import { MapView } from "../components/MapView";
 import { Kpi, ListingCard, Loading, Section } from "../components/ui";
 import { money, mult, pct, useApi, type Listing, type MapPoint } from "../lib";
 
+interface AreaRow {
+  name: string;
+  count: number;
+  medianAsking: number | null;
+  medianCashFlow: number | null;
+  medianMultiple: number | null;
+}
+
 interface Stats {
   year: number;
   kpis: {
@@ -25,7 +33,8 @@ interface Stats {
   };
   weekly: WeekRow[];
   byIndustry: IndustryRow[];
-  byCounty: { name: string; count: number; medianAsking: number | null; medianCashFlow: number | null; medianMultiple: number | null }[];
+  byCounty: AreaRow[];
+  byCity: AreaRow[];
   scatter: ScatterPoint[];
   topRoi: Listing[];
   recentlyListed: Listing[];
@@ -39,12 +48,15 @@ export default function Dashboard() {
   if (!data) return <Loading />;
   const k = data.kpis;
   const favIds = new Set(favs?.items.map((f) => f.id));
+  // With a single covered county, break the market down by community instead.
+  const byCity = data.byCounty.length <= 1;
+  const areas = byCity ? data.byCity.filter((c) => c.count >= 2) : data.byCounty;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Columbus-area business market</h1>
-          <p className="text-sm text-ink-2">Franklin County and surrounding counties within 60 miles of downtown Columbus.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight">Franklin County business market</h1>
+          <p className="text-sm text-ink-2">Columbus and the rest of Franklin County, Ohio.</p>
         </div>
         <Link to="/browse" className="btn btn-primary">
           Browse {k.activeListings} businesses →
@@ -95,7 +107,7 @@ export default function Dashboard() {
 
       <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
         <Section title="Market map" subtitle="Active listings, colored by estimated ROI. Click a pin for details.">
-          <MapView points={data.mapPoints} height={520} showRadius />
+          <MapView points={data.mapPoints} height={520} />
         </Section>
         <Section title="Best estimated returns" subtitle="Highest ROI with lender-grade coverage (DSCR ≥ 1.25)" action={<Link to="/browse?sort=roi_desc&minDscr=1.25" className="text-sm font-semibold text-brand">All →</Link>}>
           <div className="space-y-3">
@@ -119,12 +131,12 @@ export default function Dashboard() {
         <Section title="Median multiple by industry" subtitle="Asking price ÷ cash flow, industries with 2+ active listings">
           <IndustryMultiplesChart data={data.byIndustry} />
         </Section>
-        <Section title="By county">
+        <Section title={byCity ? "By community" : "By county"} subtitle={byCity ? "Communities with 2+ active listings" : undefined}>
           <div className="overflow-x-auto">
             <table className="tnum w-full text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-xs text-muted">
-                  <th className="py-2 font-semibold">County</th>
+                  <th className="py-2 font-semibold">{byCity ? "Community" : "County"}</th>
                   <th className="py-2 text-right font-semibold">Listings</th>
                   <th className="py-2 text-right font-semibold">Median ask</th>
                   <th className="py-2 text-right font-semibold">Median CF</th>
@@ -132,10 +144,10 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {data.byCounty.map((c) => (
+                {areas.map((c) => (
                   <tr key={c.name} className="border-b border-line last:border-0">
                     <td className="py-2">
-                      <Link to={`/browse?county=${encodeURIComponent(c.name)}`} className="font-semibold text-brand">
+                      <Link to={`/browse?${byCity ? "city" : "county"}=${encodeURIComponent(c.name)}`} className="font-semibold text-brand">
                         {c.name}
                       </Link>
                     </td>

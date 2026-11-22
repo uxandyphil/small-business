@@ -3,7 +3,7 @@
 import { z } from "zod";
 import type { ReadDB, Row } from "./dbtypes.js";
 import { DEFAULT_ASSUMPTIONS } from "./finance.js";
-import { COLUMBUS, REGION_RADIUS_MILES } from "./geo.js";
+import { COLUMBUS, REGION_COUNTIES } from "./geo.js";
 import { INDUSTRIES } from "./normalize.js";
 import { enrich, FiltersSchema, parseAssumptions, searchListings } from "./query.js";
 import { dashboardStats, mapPoint, median, salesReport } from "./stats.js";
@@ -19,7 +19,7 @@ export function getMeta(db: ReadDB) {
     industries: INDUSTRIES,
     counties,
     cities,
-    region: { center: COLUMBUS, radiusMiles: REGION_RADIUS_MILES },
+    region: { center: COLUMBUS, counties: REGION_COUNTIES },
     demoMode: Number(demo.c) > 0,
     realListingCount: Number(real.c),
     lastUpdated: lastUpdated(db),

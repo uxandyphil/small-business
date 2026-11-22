@@ -3,7 +3,18 @@
 // plots city-level positions and labels them as approximate.
 
 export const COLUMBUS = { lat: 39.9612, lng: -82.9988 };
-export const REGION_RADIUS_MILES = 60;
+/**
+ * Counties the tracker covers. Listings and sales elsewhere are dropped at
+ * ingestion. Override with REGION_COUNTIES="Franklin,Delaware,Licking".
+ */
+export const REGION_COUNTIES: string[] = (
+  // globalThis lookup keeps this module usable in the browser (static build).
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.REGION_COUNTIES ?? "Franklin"
+)
+  .split(",")
+  .map((c) => c.trim())
+  .filter(Boolean);
+const inCounties = (county: string | null | undefined) => county != null && REGION_COUNTIES.includes(county);
 
 export interface Place {
   city: string;
@@ -118,13 +129,14 @@ export function resolveLocation(input: {
 
   if (input.lat != null && input.lng != null) {
     const nearest = nearestPlace(input.lat, input.lng);
+    const county = countyIn ?? nearest.county;
     return {
       city: input.city ? titleCase(norm(input.city)) : nearest.city,
-      county: countyIn ?? nearest.county,
+      county,
       lat: input.lat,
       lng: input.lng,
       precision: "address",
-      inRegion: milesBetween(COLUMBUS, { lat: input.lat, lng: input.lng }) <= REGION_RADIUS_MILES,
+      inRegion: inCounties(county),
     };
   }
 
@@ -133,7 +145,7 @@ export function resolveLocation(input: {
     const canonical = ALIASES[key] ?? key;
     const place = PLACES.find((p) => norm(p.city) === norm(canonical));
     if (place) {
-      return { city: place.city, county: place.county, lat: place.lat, lng: place.lng, precision: "city", inRegion: true };
+      return { city: place.city, county: place.county, lat: place.lat, lng: place.lng, precision: "city", inRegion: inCounties(place.county) };
     }
   }
 
@@ -145,7 +157,7 @@ export function resolveLocation(input: {
       lat: c.lat,
       lng: c.lng,
       precision: "county",
-      inRegion: milesBetween(COLUMBUS, c) <= REGION_RADIUS_MILES,
+      inRegion: inCounties(countyIn),
     };
   }
 
