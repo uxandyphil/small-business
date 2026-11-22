@@ -59,7 +59,7 @@ export function Kpi({ label, value, sub, hint }: { label: string; value: ReactNo
 
 export function Section({ title, subtitle, action, children, className = "" }: { title: string; subtitle?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`card p-4 sm:p-5 ${className}`}>
+    <section className={`card min-w-0 p-4 sm:p-5 ${className}`}>
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-base font-bold text-ink">{title}</h2>

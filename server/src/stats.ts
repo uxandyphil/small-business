@@ -137,21 +137,58 @@ export function salesReport(db: DB, asOf: Date, year: number) {
   const offMarket = db
     .prepare("SELECT * FROM listings WHERE status='off_market' AND status_changed_at >= ? AND status_changed_at < ? ORDER BY status_changed_at DESC")
     .all(`${year}-01-01`, `${year + 1}-01-01`) as Row[];
+  const saleRows = sales.map((s) => {
+    const l = s.listing_id != null ? views.get(Number(s.listing_id)) : undefined;
+    const lastAsk = l?.asking_price as number | null | undefined;
+    return {
+      ...s,
+      listing: l
+        ? { id: l.id, title: l.title, asking_price: lastAsk, original_price: l.original_price, cash_flow_sde: l.cash_flow_sde, revenue: l.revenue, days_on_market: l.days_on_market, sources: l.sources }
+        : null,
+      sale_to_ask: s.sale_price && lastAsk ? Number(s.sale_price) / lastAsk : null,
+      sale_multiple: s.sale_price && l?.cash_flow_sde ? Number(s.sale_price) / Number(l.cash_flow_sde) : null,
+    };
+  });
+  const offMarketViews = enrich(db, offMarket, DEFAULT_ASSUMPTIONS, asOf);
+  const activeByIndustry = new Map(
+    (db.prepare("SELECT industry, COUNT(*) c FROM listings WHERE status IN ('active','pending') GROUP BY industry").all() as Row[]).map((r) => [String(r.industry), Number(r.c)]),
+  );
+
+  // Which industries are actually selling: volume, speed, price and sell-through.
+  const groups = new Map<string, typeof saleRows>();
+  for (const s of saleRows) {
+    const k = String((s as Row).industry ?? "Other");
+    groups.set(k, [...(groups.get(k) ?? []), s]);
+  }
+  const offByIndustry = new Map<string, number>();
+  for (const o of offMarketViews) offByIndustry.set(String(o.industry), (offByIndustry.get(String(o.industry)) ?? 0) + 1);
+  const industries = [...new Set([...groups.keys(), ...offByIndustry.keys()])]
+    .map((name) => {
+      const g = groups.get(name) ?? [];
+      const off = offByIndustry.get(name) ?? 0;
+      return {
+        name,
+        sales: g.length,
+        confirmed: g.filter((s) => (s as Row).verification === "confirmed").length,
+        brokerReported: g.filter((s) => (s as Row).verification === "broker_reported").length,
+        sharePct: saleRows.length ? (g.length / saleRows.length) * 100 : 0,
+        medianSalePrice: median(g.map((s) => (s as Row).sale_price as number | null)),
+        medianSaleMultiple: median(g.map((s) => s.sale_multiple)),
+        medianSaleToAsk: median(g.map((s) => s.sale_to_ask)),
+        medianDaysOnMarket: median(g.map((s) => s.listing?.days_on_market)),
+        offMarket: off,
+        // Of the listings in this industry that left the market this year, the share with a sale record.
+        sellThroughPct: g.length + off > 0 ? (g.length / (g.length + off)) * 100 : null,
+        activeNow: activeByIndustry.get(name) ?? 0,
+      };
+    })
+    .sort((a, b) => b.sales - a.sales || (b.sellThroughPct ?? 0) - (a.sellThroughPct ?? 0));
+
   return {
     year,
-    sales: sales.map((s) => {
-      const l = s.listing_id != null ? views.get(Number(s.listing_id)) : undefined;
-      const lastAsk = l?.asking_price as number | null | undefined;
-      return {
-        ...s,
-        listing: l
-          ? { id: l.id, title: l.title, asking_price: lastAsk, original_price: l.original_price, cash_flow_sde: l.cash_flow_sde, revenue: l.revenue, days_on_market: l.days_on_market, sources: l.sources }
-          : null,
-        sale_to_ask: s.sale_price && lastAsk ? Number(s.sale_price) / lastAsk : null,
-        sale_multiple: s.sale_price && l?.cash_flow_sde ? Number(s.sale_price) / Number(l.cash_flow_sde) : null,
-      };
-    }),
-    offMarket: enrich(db, offMarket, DEFAULT_ASSUMPTIONS, asOf).map((l) => ({
+    industries,
+    sales: saleRows,
+    offMarket: offMarketViews.map((l) => ({
       id: l.id, title: l.title, industry: l.industry, city: l.city, county: l.county, asking_price: l.asking_price,
       cash_flow_sde: l.cash_flow_sde, last_seen_at: l.last_seen_at, status_changed_at: l.status_changed_at, days_on_market: l.days_on_market, sources: l.sources,
     })),

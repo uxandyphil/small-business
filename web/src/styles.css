@@ -23,6 +23,7 @@
   --series-1: #2a78d6; /* blue  – new / primary */
   --series-2: #eb6834; /* orange – off-market */
   --series-3: #1baf7a; /* aqua  – sold */
+  --series-3-soft: #9fe0c6; /* light aqua – broker-reported sold */
   --grid: #e1e0d9;
   --axis: #c3c2b7;
   --seq-1: #b7d3f6;
@@ -54,6 +55,7 @@
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
+    --series-3-soft: #13573f;
     --grid: #2c2c2a;
     --axis: #383835;
     --seq-1: #184f95;
@@ -84,6 +86,7 @@
   --series-1: #3987e5;
   --series-2: #d95926;
   --series-3: #199e70;
+  --series-3-soft: #13573f;
   --grid: #2c2c2a;
   --axis: #383835;
   --seq-1: #184f95;

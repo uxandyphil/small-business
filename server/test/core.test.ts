@@ -6,6 +6,7 @@ import { mapSaleRow, parseCsv } from "../src/sources/mapped.js";
 import { resolveLocation } from "../src/geo.js";
 import { openDb, type DB, type Row } from "../src/db.js";
 import { runSource } from "../src/ingest.js";
+import { salesReport } from "../src/stats.js";
 import { ADAPTERS } from "../src/sources/adapters.js";
 import type { FetchResult, RawListing } from "../src/sources/types.js";
 
@@ -194,6 +195,26 @@ describe("ingestion pipeline", () => {
     expect(sale.verification).toBe("confirmed");
     expect(sale.sale_price).toBe(430_000);
     expect((db.prepare("SELECT COUNT(*) c FROM sales").get() as Row).c).toBe(1);
+  });
+
+  it("ranks industries by sales and sell-through", async () => {
+    next = {
+      listings: [listing(), listing({ externalId: "A2", title: "Busy Pizzeria in Dublin", city: "Dublin" }), listing({ externalId: "A3", title: "HVAC Contractor in Dublin", industry: "HVAC", city: "Dublin" })],
+      complete: true,
+    };
+    await runSource(db, "t1", day(0));
+    next = {
+      listings: [],
+      sales: [{ businessName: "Established Pizzeria in Hilliard", externalListingId: "A1", verification: "confirmed", evidenceType: "public_record", evidenceUrl: "https://r/1", salePrice: 450_000, saleDate: "2026-02-01" }],
+      complete: true,
+    };
+    await runSource(db, "t1", day(30));
+    await runSource(db, "t1", day(37)); // second miss: the other two go off market
+    const r = salesReport(db, day(40), 2026);
+    const food = r.industries.find((i) => i.name === "Restaurants & Food")!;
+    expect(food).toMatchObject({ sales: 1, confirmed: 1, offMarket: 1, sellThroughPct: 50, medianSalePrice: 450_000 });
+    expect(r.industries[0].name).toBe("Restaurants & Food"); // most sold first
+    expect(r.industries.find((i) => i.name === "Home & Trade Services")).toMatchObject({ sales: 0, offMarket: 1, sellThroughPct: 0 });
   });
 
   it("skips listings outside the Columbus region", async () => {

@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   LabelList,
   Line,
   LineChart,
@@ -281,6 +282,102 @@ export function SaleVsAskChart({ data }: { data: { id: number; name: string; ask
             />
             <Scatter isAnimationActive={false} data={data} fill="var(--series-3)" stroke="var(--surface)" strokeWidth={1.5} />
           </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export interface IndustrySalesRow {
+  name: string;
+  sales: number;
+  confirmed: number;
+  brokerReported: number;
+  sharePct: number;
+  medianDaysOnMarket: number | null;
+  sellThroughPct: number | null;
+}
+
+/** Total label at the end of each stacked bar, drawn by whichever segment is last. */
+function totalLabel(rows: IndustrySalesRow[], onBrokerSegment: boolean) {
+  return (props: unknown) => {
+    const { x, y, width, height, index } = props as { x: number; y: number; width: number; height: number; index: number };
+    const r = rows[index];
+    if (!r || (r.brokerReported > 0) !== onBrokerSegment) return null;
+    return (
+      <text x={Number(x) + Number(width) + 6} y={Number(y) + Number(height) / 2} dominantBaseline="central" fill="var(--ink-2)" fontSize={11}>
+        {r.sales}
+      </text>
+    );
+  };
+}
+
+/** Sales per industry, split by verification level. Verified = solid aqua; broker-reported = light aqua (same outcome, less certain). */
+export function IndustrySalesChart({ data, selected, onSelect }: { data: IndustrySalesRow[]; selected?: string | null; onSelect?: (name: string) => void }) {
+  const rows = data.filter((d) => d.sales > 0);
+  return (
+    <div>
+      <Legend
+        items={[
+          { label: "Verified sales", color: "var(--series-3)" },
+          { label: "Broker-reported sales", color: "var(--series-3-soft)" },
+        ]}
+      />
+      <div className="mt-2" style={{ height: Math.max(160, rows.length * 28 + 24) }}>
+        <ResponsiveContainer>
+          <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 36, left: 8, bottom: 0 }} barCategoryGap={6}>
+            <CartesianGrid horizontal={false} stroke="var(--grid)" />
+            <XAxis type="number" {...axisProps} allowDecimals={false} />
+            <YAxis type="category" dataKey="name" {...axisProps} width={170} axisLine={false} />
+            <Tooltip
+              cursor={{ fill: "var(--surface-2)" }}
+              content={({ active, payload }) =>
+                active && payload?.length ? (
+                  <TipBox
+                    title={String(payload[0].payload.name)}
+                    rows={[
+                      ["Verified", payload[0].payload.confirmed, "var(--series-3)"],
+                      ["Broker-reported", payload[0].payload.brokerReported, "var(--series-3-soft)"],
+                      ["Share of all sales", pct(payload[0].payload.sharePct)],
+                      ["Median days to sell", payload[0].payload.medianDaysOnMarket ?? "—"],
+                      ["Sell-through", pct(payload[0].payload.sellThroughPct)],
+                    ]}
+                  />
+                ) : null
+              }
+            />
+            <Bar
+              dataKey="confirmed"
+              stackId="s"
+              fill="var(--series-3)"
+              stroke="var(--surface)"
+              strokeWidth={1}
+              barSize={16}
+              cursor={onSelect ? "pointer" : undefined}
+              onClick={(d: unknown) => onSelect?.(String((d as { payload?: { name: string }; name?: string }).payload?.name ?? (d as { name: string }).name))}
+            >
+              {rows.map((r) => (
+                <Cell key={r.name} fillOpacity={selected && selected !== r.name ? 0.35 : 1} />
+              ))}
+              <LabelList dataKey="sales" content={totalLabel(rows, false)} />
+            </Bar>
+            <Bar
+              dataKey="brokerReported"
+              stackId="s"
+              fill="var(--series-3-soft)"
+              stroke="var(--surface)"
+              strokeWidth={1}
+              radius={[0, 4, 4, 0]}
+              barSize={16}
+              cursor={onSelect ? "pointer" : undefined}
+              onClick={(d: unknown) => onSelect?.(String((d as { payload?: { name: string }; name?: string }).payload?.name ?? (d as { name: string }).name))}
+            >
+              {rows.map((r) => (
+                <Cell key={r.name} fillOpacity={selected && selected !== r.name ? 0.35 : 1} />
+              ))}
+              <LabelList dataKey="sales" content={totalLabel(rows, true)} />
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
