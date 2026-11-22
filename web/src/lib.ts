@@ -88,6 +88,7 @@ export interface Meta {
   realListingCount: number;
   lastUpdated: string | null;
   defaultAssumptions: FinanceAssumptions;
+  staticMode?: boolean;
 }
 
 // ---- Anonymous device identity (favorites & alerts are tied to it)
@@ -105,7 +106,14 @@ export function userId(): string {
   }
 }
 
+/** True in the read-only GitHub Pages build (no server: no alerts or data collection). */
+export const STATIC_MODE = import.meta.env.VITE_STATIC === "1";
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (STATIC_MODE) {
+    const { staticApi } = await import("./staticApi");
+    return staticApi<T>(path, init);
+  }
   const res = await fetch(path, {
     ...init,
     headers: { "Content-Type": "application/json", "X-User-Id": userId(), ...(init.headers ?? {}) },

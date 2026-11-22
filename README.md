@@ -15,6 +15,19 @@ npm run dev       # API on :8787, web on http://localhost:5173
 Production: `npm run build && npm start` (Express serves the built SPA on `PORT`, default 8787).
 Tests: `npm test`. Type-check: `npm run typecheck`. Requires Node ≥ 22.13 (uses the built-in `node:sqlite`).
 
+## Read-only version on GitHub Pages
+
+`npm run build:static` produces a fully static site in `web/dist/` that needs no server. It ships a snapshot of the database (personal data such as favorites, alerts and emails is stripped), and the browser runs the same query code on it using SQLite compiled to WebAssembly. Dashboard, browse, filters, map, charts, listing pages, the financing calculator, sold reports and methodology all work. Favorites are kept in the visitor's browser. Alerts, notifications and data collection need the server version.
+
+To publish:
+1. On GitHub, open **Settings → Pages** and set **Source** to **GitHub Actions**.
+2. Merge this code into `main`. `.github/workflows/pages.yml` builds and deploys on every push to `main`. You can also run it from the **Actions** tab with **Run workflow**.
+3. The site appears at `https://<your-username>.github.io/<repo-name>/` (shown on the Pages settings page and in the workflow run).
+
+Notes: a Pages site is public even if the repo is private, and Pages on private repos requires a paid GitHub plan. The workflow currently builds the synthetic demo data. Once real sources are connected, replace the `npm run seed` step with your ingest step. The snapshot only changes when the workflow runs.
+
+To preview the static build locally: `npm run build:static && npx vite preview --outDir web/dist` (from the repo root), then open the URL it prints.
+
 ## Features
 
 | Area | What it does |

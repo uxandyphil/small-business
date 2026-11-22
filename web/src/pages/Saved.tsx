@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Empty, ListingCard, Loading, Section } from "../components/ui";
-import { api, date, useApi, type Listing } from "../lib";
+import { api, date, STATIC_MODE, useApi, type Listing } from "../lib";
 
 interface AlertRow {
   id: number;
@@ -41,12 +41,16 @@ export default function Saved() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Saved &amp; alerts</h1>
-        <p className="text-sm text-ink-2">Saved on this device. Alerts are checked every time new data is ingested.</p>
+        <h1 className="text-2xl font-extrabold tracking-tight">{STATIC_MODE ? "Saved businesses" : "Saved & alerts"}</h1>
+        <p className="text-sm text-ink-2">
+          {STATIC_MODE
+            ? "Saved in this browser. This read-only version can't send alerts; run the full server version for saved-search alerts and email."
+            : "Saved on this device. Alerts are checked every time new data is ingested."}
+        </p>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_420px]">
-        <Section title={`Saved businesses${favs.data ? ` (${favs.data.items.length})` : ""}`} subtitle="You'll get an update when a saved listing changes price or status.">
+        <Section className={STATIC_MODE ? "xl:col-span-2" : ""} title={`Saved businesses${favs.data ? ` (${favs.data.items.length})` : ""}`} subtitle={STATIC_MODE ? "Stored in this browser only." : "You'll get an update when a saved listing changes price or status."}>
           {!favs.data ? (
             <Loading />
           ) : favs.data.items.length === 0 ? (
@@ -62,7 +66,7 @@ export default function Saved() {
           )}
         </Section>
 
-        <div className="space-y-5">
+        <div className={`space-y-5 ${STATIC_MODE ? "hidden" : ""}`}>
           <Section
             title="Notifications"
             action={

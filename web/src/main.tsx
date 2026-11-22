@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, createHashRouter, RouterProvider } from "react-router-dom";
 import "./styles.css";
 import App from "./App";
 import Dashboard from "./pages/Dashboard";
@@ -9,8 +9,11 @@ import ListingDetail from "./pages/ListingDetail";
 import Sold from "./pages/Sold";
 import Saved from "./pages/Saved";
 import Sources from "./pages/Sources";
+import { STATIC_MODE } from "./lib";
 
-const router = createBrowserRouter([
+// GitHub Pages has no server-side routing, so the static build uses #/ URLs.
+const createRouter = STATIC_MODE ? createHashRouter : createBrowserRouter;
+const router = createRouter([
   {
     path: "/",
     element: <App />,

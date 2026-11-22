@@ -3,7 +3,10 @@
 //   tsx src/cli.ts ingest [sourceId ...]    – run enabled sources (or the named ones) now
 //   tsx src/cli.ts sources                  – list sources and status
 //   tsx src/cli.ts enable|disable <id>
-import { rmSync } from "node:fs";
+//   tsx src/cli.ts export-static <file>     – write a read-only DB snapshot for the GitHub Pages build
+import { mkdirSync, rmSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { DEFAULT_DB_PATH, openDb, type Row } from "./db.js";
 import { runSource } from "./ingest.js";
 import { registerSources } from "./sources/registry.js";
@@ -65,9 +68,28 @@ function toggle(id: string | undefined, on: boolean) {
   console.log(r.changes ? `${id} ${on ? "enabled" : "disabled"}` : `No source ${id}`);
 }
 
-const run = { seed, ingest: () => ingest(args), sources, enable: () => toggle(args[0], true), disable: () => toggle(args[0], false) }[cmd ?? ""];
+function exportStatic(out: string | undefined) {
+  if (!out) throw new Error("usage: export-static <file>");
+  const target = resolve(out);
+  mkdirSync(dirname(target), { recursive: true });
+  rmSync(target, { force: true });
+  const db = openDb();
+  // VACUUM INTO folds in the WAL and produces one self-contained file.
+  db.exec(`VACUUM INTO '${target.replace(/'/g, "''")}'`);
+  db.close();
+  const snap = new DatabaseSync(target);
+  // Never publish personal data: device ids, favorites, alerts, emails, notifications.
+  snap.exec(`DELETE FROM notifications; DELETE FROM alerts; DELETE FROM favorites; DELETE FROM users;
+             UPDATE sources SET config_json='{}';
+             PRAGMA journal_mode=DELETE; VACUUM;`);
+  const n = snap.prepare("SELECT COUNT(*) c FROM listings").get() as Row;
+  snap.close();
+  console.log(`Exported ${n.c} listings to ${target}`);
+}
+
+const run = { seed, ingest: () => ingest(args), sources, enable: () => toggle(args[0], true), disable: () => toggle(args[0], false), "export-static": () => exportStatic(args[0]) }[cmd ?? ""];
 if (!run) {
-  console.log("usage: cli.ts seed | ingest [sourceId...] | sources | enable <id> | disable <id>");
+  console.log("usage: cli.ts seed | ingest [sourceId...] | sources | enable <id> | disable <id> | export-static <file>");
   process.exit(1);
 }
 await run();

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { DB, Row } from "./db.js";
+import type { ReadDB as DB, Row } from "./dbtypes.js";
 import { analyzeDeal, DEFAULT_ASSUMPTIONS, type FinanceAssumptions, type FinanceResult } from "./finance.js";
 
 const csv = z

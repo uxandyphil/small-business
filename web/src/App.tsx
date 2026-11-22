@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, Link } from "react-router-dom";
-import { date, useApi, type Meta } from "./lib";
+import { date, STATIC_MODE, useApi, type Meta } from "./lib";
 
 function ThemeToggle() {
   const [theme, setTheme] = useState<string | null>(() => {
@@ -45,7 +45,7 @@ const NAV = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/browse", label: "Browse" },
   { to: "/sold", label: "Sold in 2026" },
-  { to: "/saved", label: "Saved & alerts" },
+  { to: "/saved", label: STATIC_MODE ? "Saved" : "Saved & alerts" },
   { to: "/sources", label: "Data & methodology" },
 ];
 
@@ -56,7 +56,7 @@ export default function App() {
       <header className="sticky top-0 z-[1000] border-b border-line bg-[var(--surface)]">
         <div className="mx-auto flex max-w-[1400px] items-center gap-4 px-4 py-2.5">
           <Link to="/" className="flex shrink-0 items-center gap-2">
-            <img src="/favicon.svg" alt="" className="h-7 w-7" />
+            <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-7 w-7" />
             <span className="text-[15px] font-extrabold tracking-tight text-ink">
               Columbus<span className="text-brand">Biz</span>Tracker
             </span>
@@ -76,7 +76,7 @@ export default function App() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-1">
-            <Bell />
+            {!STATIC_MODE && <Bell />}
             <ThemeToggle />
           </div>
         </div>
@@ -93,6 +93,14 @@ export default function App() {
           ))}
         </nav>
       </header>
+      {STATIC_MODE && (
+        <div className="border-b border-line bg-brand-soft">
+          <div className="mx-auto max-w-[1400px] px-4 py-2 text-sm text-brand">
+            <b>Read-only snapshot</b> as of {date(meta?.lastUpdated)}. Favorites are saved in this browser only; alerts and live data collection need the full
+            server version.
+          </div>
+        </div>
+      )}
       {meta?.demoMode && (
         <div className="border-b border-line bg-warn-soft">
           <div className="mx-auto max-w-[1400px] px-4 py-2 text-sm text-warn">

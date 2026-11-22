@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MapView } from "../components/MapView";
 import { Empty, ListingCard, Loading } from "../components/ui";
-import { api, money, mult, pct, useApi, type Listing, type MapPoint, type Meta } from "../lib";
+import { api, money, mult, pct, STATIC_MODE, useApi, type Listing, type MapPoint, type Meta } from "../lib";
 
 interface SearchResult {
   total: number;
@@ -313,9 +313,11 @@ export default function Browse() {
             </button>
           ))}
         </div>
-        <button className="btn btn-primary" onClick={() => setAlertOpen(true)}>
-          🔔 Alert me
-        </button>
+        {!STATIC_MODE && (
+          <button className="btn btn-primary" onClick={() => setAlertOpen(true)}>
+            🔔 Alert me
+          </button>
+        )}
       </div>
 
       {alertOpen && <AlertDialog params={params} onClose={() => setAlertOpen(false)} />}
