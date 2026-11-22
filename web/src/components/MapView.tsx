@@ -5,6 +5,14 @@ import { jitter, money, pct, type MapPoint } from "../lib";
 
 const CENTER: [number, number] = [39.99, -82.99];
 
+// Keyless OpenStreetMap tiles by default (fine for light traffic under the OSM
+// tile usage policy). For heavier traffic, set VITE_TILE_URL / VITE_TILE_ATTRIBUTION
+// at build time to a provider you have an account with.
+const CUSTOM_TILES = Boolean(import.meta.env.VITE_TILE_URL);
+const TILE_URL: string = import.meta.env.VITE_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_ATTRIBUTION: string =
+  import.meta.env.VITE_TILE_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
 function useDark() {
   const q = typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   const read = () => {
@@ -59,13 +67,10 @@ export function MapView({
 }) {
   const dark = useDark();
   const maxCf = useMemo(() => Math.max(1, ...points.map((p) => p.cashFlow ?? 0)), [points]);
-  const tiles = dark
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
   return (
-    <div className="relative overflow-hidden rounded-xl border border-line" style={{ height }}>
+    <div className={`relative overflow-hidden rounded-xl border border-line ${dark && !CUSTOM_TILES ? "map-dark" : ""}`} style={{ height }}>
       <MapContainer center={CENTER} zoom={9} scrollWheelZoom style={{ height: "100%", width: "100%" }}>
-        <TileLayer key={tiles} url={tiles} attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>' />
+        <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} maxZoom={19} />
         {showRadius && <Circle center={CENTER} radius={60 * 1609} pathOptions={{ color: "var(--axis)", weight: 1, dashArray: "4 6", fill: false }} />}
         <FitOnFocus focus={focus} />
         {points

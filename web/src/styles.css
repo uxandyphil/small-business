@@ -173,6 +173,10 @@ body {
   background: var(--surface-2);
   font-family: var(--font-sans);
 }
+/* OSM tiles have no dark style; invert them so the map matches dark mode. */
+.map-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   background: var(--surface);

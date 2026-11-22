@@ -26,6 +26,8 @@ To publish:
 
 Notes: a Pages site is public even if the repo is private, and Pages on private repos requires a paid GitHub plan. The workflow currently builds the synthetic demo data. Once real sources are connected, replace the `npm run seed` step with your ingest step. The snapshot only changes when the workflow runs.
 
+Map tiles come from OpenStreetMap and need no key. OSM's tile policy only covers light use, so for a busy site set `VITE_TILE_URL` (and `VITE_TILE_ATTRIBUTION`) at build time to a provider you have an account with, e.g. MapTiler or Stadia Maps.
+
 To preview the static build locally: `npm run build:static && npx vite preview --outDir web/dist` (from the repo root), then open the URL it prints.
 
 ## Features
