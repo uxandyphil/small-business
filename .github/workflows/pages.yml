@@ -4,7 +4,9 @@ name: Deploy read-only site to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # Pages only deploys from branches the github-pages environment allows
+    # (by default, the repo's default branch), so both are listed here.
+    branches: [main, ccr-41fc78f8-r8dau2]
   workflow_dispatch: # "Run workflow" button on the Actions tab
 
 permissions:
