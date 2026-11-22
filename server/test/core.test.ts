@@ -6,7 +6,7 @@ import { mapSaleRow, parseCsv } from "../src/sources/mapped.js";
 import { resolveLocation } from "../src/geo.js";
 import { openDb, type DB, type Row } from "../src/db.js";
 import { runSource } from "../src/ingest.js";
-import { salesReport } from "../src/stats.js";
+import { salesReport, yearComparison } from "../src/stats.js";
 import { ADAPTERS } from "../src/sources/adapters.js";
 import type { FetchResult, RawListing } from "../src/sources/types.js";
 
@@ -215,6 +215,29 @@ describe("ingestion pipeline", () => {
     expect(food).toMatchObject({ sales: 1, confirmed: 1, offMarket: 1, sellThroughPct: 50, medianSalePrice: 450_000 });
     expect(r.industries[0].name).toBe("Restaurants & Food"); // most sold first
     expect(r.industries.find((i) => i.name === "Home & Trade Services")).toMatchObject({ sales: 0, offMarket: 1, sellThroughPct: 0 });
+  });
+
+  it("compares years like for like", async () => {
+    const at = (iso: string) => new Date(iso + "T12:00:00Z");
+    next = { listings: [listing(), listing({ externalId: "A2", title: "Busy Pizzeria in Dublin", city: "Dublin" })], complete: true };
+    await runSource(db, "t1", at("2025-01-06"));
+    next = {
+      listings: [listing({ externalId: "A2", title: "Busy Pizzeria in Dublin", city: "Dublin" })],
+      sales: [
+        { businessName: "Established Pizzeria in Hilliard", externalListingId: "A1", verification: "confirmed", evidenceType: "news", evidenceUrl: "https://n/1", salePrice: 400_000, saleDate: "2025-03-01" },
+        { businessName: "Other Diner", city: "Columbus", industry: "Restaurant", verification: "broker_reported", evidenceType: "broker_closed_deal", saleDate: "2025-12-01" },
+        { businessName: "Third Cafe", city: "Columbus", industry: "Cafe", verification: "confirmed", evidenceType: "news", evidenceUrl: "https://n/3", salePrice: 300_000, saleDate: "2026-02-01" },
+      ],
+      complete: false,
+    };
+    await runSource(db, "t1", at("2026-02-15"));
+    const r = yearComparison(db, at("2026-06-30"));
+    expect(r.years.map((y) => y.year)).toEqual([2025, 2026]);
+    const [y25, y26] = r.years;
+    expect(y25).toMatchObject({ sales: 2, confirmed: 1, brokerReported: 1, medianSalePrice: 400_000 });
+    expect(y25.samePeriod.sales).toBe(1); // Dec 1 sale falls outside Jan 1 – Jun 30
+    expect(y26).toMatchObject({ partial: true, sales: 1 });
+    expect(r.industries[0]).toMatchObject({ name: "Restaurants & Food", total: 3 });
   });
 
   it("skips listings outside the Columbus region", async () => {

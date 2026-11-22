@@ -6,7 +6,7 @@
 import initSqlJs, { type Database } from "sql.js";
 import wasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import type { ReadDB } from "../../server/src/dbtypes";
-import { getListingDetail, getMeta, getSales, getSources, getStats, lastUpdated, listByIds, listListings } from "../../server/src/handlers";
+import { getListingDetail, getMeta, getSales, getSources, getStats, getYearComparison, lastUpdated, listByIds, listListings } from "../../server/src/handlers";
 
 const FAV_KEY = "cbt.favorites";
 
@@ -81,6 +81,7 @@ export async function staticApi<T>(path: string, init: RequestInit = {}): Promis
       return d;
     }
     if (p === "/api/stats") return getStats(db, q, asOf);
+    if (p === "/api/sales/compare") return getYearComparison(db, asOf);
     if (p === "/api/sales") return getSales(db, q, asOf);
     if (p === "/api/sources") return getSources(db);
     if (p === "/api/favorites") return listByIds(db, favorites(), q, asOf);

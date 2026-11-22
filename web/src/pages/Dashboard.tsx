@@ -100,7 +100,7 @@ export default function Dashboard() {
           Median sale-to-ask on disclosed prices: <b className="tnum text-ink">{pct(k.medianSaleToAsk != null ? k.medianSaleToAsk * 100 : null)}</b> · median days on market for sold
           businesses: <b className="tnum text-ink">{k.medianDaysOnMarketSold ?? "—"}</b> ·{" "}
           <Link to="/sold" className="font-semibold text-brand">
-            See all {data.year} sales →
+            See all sales and past years →
           </Link>
         </div>
       </div>

@@ -383,3 +383,56 @@ export function IndustrySalesChart({ data, selected, onSelect }: { data: Industr
     </div>
   );
 }
+
+export interface YearExitRow {
+  label: string;
+  confirmed: number;
+  brokerReported: number;
+  offMarket: number;
+}
+
+/** Exits per year: verified sales, broker-reported sales, and listings that disappeared without a sale. */
+export function YearExitsChart({ data }: { data: YearExitRow[] }) {
+  return (
+    <div>
+      <Legend
+        items={[
+          { label: "Verified sales", color: "var(--series-3)" },
+          { label: "Broker-reported sales", color: "var(--series-3-soft)" },
+          { label: "Disappeared, no sale", color: "var(--series-2)" },
+        ]}
+      />
+      <div className="mt-2 h-64">
+        <ResponsiveContainer>
+          <BarChart data={data} margin={{ top: 16, right: 8, left: -16, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="var(--grid)" />
+            <XAxis dataKey="label" {...axisProps} />
+            <YAxis {...axisProps} allowDecimals={false} axisLine={false} />
+            <Tooltip
+              cursor={{ fill: "var(--surface-2)" }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const d = payload[0].payload as YearExitRow;
+                const sold = d.confirmed + d.brokerReported;
+                return (
+                  <TipBox
+                    title={d.label}
+                    rows={[
+                      ["Verified sales", d.confirmed, "var(--series-3)"],
+                      ["Broker-reported", d.brokerReported, "var(--series-3-soft)"],
+                      ["Disappeared", d.offMarket, "var(--series-2)"],
+                      ["Sell-through", pct(sold + d.offMarket ? (sold / (sold + d.offMarket)) * 100 : null)],
+                    ]}
+                  />
+                );
+              }}
+            />
+            <Bar dataKey="confirmed" stackId="y" fill="var(--series-3)" stroke="var(--surface)" strokeWidth={1} maxBarSize={56} isAnimationActive={false} />
+            <Bar dataKey="brokerReported" stackId="y" fill="var(--series-3-soft)" stroke="var(--surface)" strokeWidth={1} maxBarSize={56} isAnimationActive={false} />
+            <Bar dataKey="offMarket" stackId="y" fill="var(--series-2)" stroke="var(--surface)" strokeWidth={1} radius={[4, 4, 0, 0]} maxBarSize={56} isAnimationActive={false} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}

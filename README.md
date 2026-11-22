@@ -8,7 +8,7 @@ An investment dashboard that tracks businesses for sale, and businesses sold, in
 
 ```bash
 npm install
-npm run seed      # builds data/tracker.db by replaying 46 weekly demo crawls (Jan–Nov 2026)
+npm run seed      # builds data/tracker.db by replaying 203 weekly demo crawls (Jan 2023–Nov 2026)
 npm run dev       # API on :8787, web on http://localhost:5173
 ```
 
@@ -37,7 +37,7 @@ To preview the static build locally: `npm run build:static && npx vite preview -
 | **Dashboard** | KPIs (active, new, median ask, cash flow, multiple, estimated ROI, price cuts), 2026 exits split into verified / broker-reported / disappeared, a market map, weekly listing flow, price vs. cash-flow scatter with 2x/3x/4x guides, multiples by industry, county table |
 | **Browse** | Zillow-style list + map split. Filter by status, price, cash flow, revenue, est. ROI, owner income, multiple, DSCR, industry, county/city, years in business, employees, franchise, real estate, new or price-reduced. Sort by ROI, owner income, multiple, DSCR and more. Financing assumptions are editable and recompute every listing |
 | **Listing detail** | Interactive acquisition calculator (offer price, down payment, seller note, SBA rate/term, capex, manager, working capital), price-history chart, full change timeline, data provenance across sources, sale evidence, industry comparables and sold comps |
-| **Sold in 2026** | Sale records with verification level, evidence type and link, sale-to-ask, days on market, and a separate tab for listings that disappeared without a verified sale |
+| **Sold** | Year-over-year comparison (2023 onward): sales, disappeared listings, sell-through, new listings, sale price, sale and asking multiples, sale-to-ask and days to sell, compared like for like with the same period of the prior year. Also an industry-by-year grid, an industries-selling breakdown for any year, and sale records with verification level and evidence links, with disappeared listings on a separate tab |
 | **Saved & alerts** | Favorites and saved-search alerts (new listings, price drops, status changes), an in-app notification feed, and optional email over SMTP |
 | **Data & methodology** | Every source with its access method, compliance note, live/total counts and last run; status rules; the finance formulas; ingestion run log |
 

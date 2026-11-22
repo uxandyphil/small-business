@@ -17,8 +17,8 @@ async function seed() {
   for (const suffix of ["", "-wal", "-shm"]) rmSync(DEFAULT_DB_PATH + suffix, { force: true });
   const db = openDb();
   registerSources(db);
-  // Weekly crawls (Mondays) from Jan 5 2026 through Nov 16 2026; records monthly.
-  const start = new Date("2026-01-05T14:00:00Z");
+  // Weekly crawls (Mondays) from Jan 2 2023 through Nov 16 2026; records monthly.
+  const start = new Date("2023-01-02T14:00:00Z");
   const end = new Date("2026-11-16T14:00:00Z");
   let weeks = 0;
   for (let d = new Date(start); d <= end; d = new Date(d.getTime() + 7 * 86400e3)) {

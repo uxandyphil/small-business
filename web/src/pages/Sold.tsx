@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { IndustrySalesChart, SaleVsAskChart } from "../components/charts";
 import { Badge, Empty, glyph, Kpi, Loading, Section, VerificationBadge } from "../components/ui";
+import { YearCompare, type Comparison } from "./YearCompare";
 import { date, EVIDENCE_LABEL, money, mult, pct, useApi, type Sale, type SourceRef } from "../lib";
 
 interface SaleRow extends Sale {
@@ -201,7 +202,9 @@ export default function Sold() {
   const [verif, setVerif] = useState<"all" | "confirmed" | "broker_reported">("all");
   const [industry, setIndustry] = useState<string | null>(null);
   const { data } = useApi<{ sales: SaleRow[]; offMarket: OffRow[]; industries: IndustryRow[] }>(`/api/sales?year=${year}`);
+  const { data: compare } = useApi<Comparison>("/api/sales/compare");
   if (!data) return <Loading />;
+  const yearOptions = compare?.years.map((y) => y.year).reverse() ?? [year];
   const sales = data.sales.filter((s) => (verif === "all" || s.verification === verif) && (!industry || s.industry === industry));
   const offMarket = data.offMarket.filter((o) => !industry || o.industry === industry);
   const priced = data.sales.filter((s) => s.sale_price != null);
@@ -212,17 +215,25 @@ export default function Sold() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Businesses sold in {year}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Businesses sold</h1>
           <p className="max-w-3xl text-sm text-ink-2">
             A business appears here only with a sale record. <b>Verified</b> sales are backed by independent evidence (county filings, liquor-permit transfers, press releases, news).{" "}
             <b>Broker-reported</b> sales rely on the broker's “Sold” notice. Listings that simply vanished are listed separately and never counted as sold.
           </p>
         </div>
-        <select className="input !w-auto" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
-          {[2026, 2025].map((y) => (
-            <option key={y}>{y}</option>
+      </div>
+
+      {compare && <YearCompare data={compare} selectedIndustry={industry} onPickIndustry={setIndustry} />}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+        <h2 className="text-xl font-extrabold tracking-tight">{year} in detail</h2>
+        <div className="flex rounded-lg border border-line-strong p-0.5" role="group" aria-label="Year">
+          {yearOptions.map((y) => (
+            <button key={y} onClick={() => setYear(y)} className={`rounded-md px-3 py-1 text-sm font-semibold ${y === year ? "bg-brand text-brand-ink" : "text-ink-2"}`}>
+              {y}
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">

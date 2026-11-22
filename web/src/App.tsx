@@ -44,7 +44,7 @@ function Bell() {
 const NAV = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/browse", label: "Browse" },
-  { to: "/sold", label: "Sold in 2026" },
+  { to: "/sold", label: "Sold" },
   { to: "/saved", label: STATIC_MODE ? "Saved" : "Saved & alerts" },
   { to: "/sources", label: "Data & methodology" },
 ];

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { z, ZodError } from "zod";
 import type { DB, Row } from "./db.js";
 import { DEFAULT_ASSUMPTIONS } from "./finance.js";
-import { getListingDetail, getMeta, getSales, getSources, getStats, listByIds, listListings } from "./handlers.js";
+import { getListingDetail, getMeta, getSales, getSources, getStats, getYearComparison, listByIds, listListings } from "./handlers.js";
 import { FiltersSchema, searchListings } from "./query.js";
 
 declare module "express-serve-static-core" {
@@ -44,6 +44,7 @@ export function createApp(db: DB, opts: { now?: () => Date } = {}) {
     res.json(detail);
   });
   app.get("/api/stats", (req, res) => res.json(getStats(db, req.query, now())));
+  app.get("/api/sales/compare", (_req, res) => res.json(getYearComparison(db, now())));
   app.get("/api/sales", (req, res) => res.json(getSales(db, req.query, now())));
   app.get("/api/sources", (_req, res) => res.json(getSources(db)));
 

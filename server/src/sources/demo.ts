@@ -47,6 +47,18 @@ const PROFILES: Profile[] = [
   { industry: "Online & E-commerce", names: ["E-commerce Home Goods Brand", "Subscription Box Business"], revenue: [300e3, 2e6], margin: [0.15, 0.3], multiple: [2.4, 3.8], employees: [1, 8] },
 ];
 
+const YEAR_MULTIPLE: Record<number, number> = { 2022: 0.94, 2023: 0.96, 2024: 0.99, 2025: 1.02, 2026: 1.05 };
+// Relative chance a listing ends in a sale, by industry and listing year (synthetic trends).
+const DEMAND: Record<string, Record<number, number>> = {
+  "Home & Trade Services": { 2023: 1.0, 2024: 1.15, 2025: 1.25, 2026: 1.3 },
+  "Health & Medical": { 2023: 1.05, 2024: 1.1, 2025: 1.2, 2026: 1.2 },
+  "Restaurants & Food": { 2023: 0.95, 2024: 0.85, 2025: 0.8, 2026: 0.75 },
+  Retail: { 2023: 0.95, 2024: 0.9, 2025: 0.85, 2026: 0.85 },
+  "Technology & IT": { 2023: 1.2, 2024: 1.0, 2025: 1.05, 2026: 1.15 },
+  "Online & E-commerce": { 2023: 1.1, 2024: 0.9, 2025: 0.95, 2026: 1.0 },
+  "Business Services": { 2023: 1.0, 2024: 1.05, 2025: 1.1, 2026: 1.1 },
+};
+
 const DESCRIPTORS = ["Established", "Profitable", "Turnkey", "Growing", "Absentee-Run", "Well-Known", "Award-Winning", "Recession-Resistant"];
 const BROKERS = ["Scioto Demo Business Brokers", "Olentangy Demo Advisors", "Buckeye Demo M&A"];
 const OUT_OF_REGION = [
@@ -93,21 +105,23 @@ export function demoUniverse(now = new Date("2026-11-20")): DemoBusiness[] {
   const rnd = mulberry32(20260101);
   const between = (a: number, b: number) => a + (b - a) * rnd();
   const pickOne = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
-  const start = new Date("2025-07-01").getTime();
+  const start = new Date("2022-07-01").getTime();
   const end = new Date("2026-11-14").getTime();
   const covered = PLACES.filter((p) => REGION_COUNTIES.includes(p.county));
   const weighted = (covered.length ? covered : PLACES).flatMap((p) => (p.city === "Columbus" ? Array(6).fill(p) : [p]));
   const out: DemoBusiness[] = [];
-  for (let i = 0; i < 230; i++) {
+  for (let i = 0; i < 640; i++) {
     const prof = pickOne(PROFILES);
     const outOfRegion = rnd() < 0.04;
     const place = outOfRegion ? pickOne(OUT_OF_REGION) : pickOne(weighted);
+    const listedAt = new Date(start + (end - start) * Math.pow(rnd(), 0.9));
+    const yr = listedAt.getUTCFullYear();
     const revenue = round(between(...prof.revenue), 5000);
     const sde = round(revenue * between(...prof.margin), 1000);
-    const multiple = between(...prof.multiple) * (rnd() < 0.08 ? 1.6 : 1); // a few overpriced listings
+    // Gentle market drift so year-over-year comparisons have something to show.
+    const multiple = between(...prof.multiple) * (YEAR_MULTIPLE[yr] ?? 1) * (rnd() < 0.08 ? 1.6 : 1); // a few overpriced listings
     const realEstate = rnd() < 0.08;
     const initialPrice = round(sde * multiple + (realEstate ? between(300e3, 900e3) : 0), 5000);
-    const listedAt = new Date(start + (end - start) * Math.pow(rnd(), 0.85));
     const descriptor = pickOne(DESCRIPTORS);
     const baseName = pickOne(prof.names);
     const isFranchise = rnd() < 0.12;
@@ -131,7 +145,8 @@ export function demoUniverse(now = new Date("2026-11-20")): DemoBusiness[] {
     let endAt: Date | null = null;
     if (endCandidate < now) {
       const r = rnd();
-      outcome = r < 0.3 ? "sold_confirmed" : r < 0.55 ? "sold_broker" : "vanished";
+      const soldP = Math.min(0.85, 0.55 * (DEMAND[prof.industry]?.[yr] ?? 1));
+      outcome = r < soldP * 0.55 ? "sold_confirmed" : r < soldP ? "sold_broker" : "vanished";
       endAt = endCandidate;
     }
     const pendingAt =

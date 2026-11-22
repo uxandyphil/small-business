@@ -194,3 +194,93 @@ export function salesReport(db: DB, asOf: Date, year: number) {
     })),
   };
 }
+
+/**
+ * Year-over-year market comparison. Each prior year is also measured over the
+ * same calendar window as the current, partial year ("same period"), so a
+ * year-to-date figure can be compared like for like.
+ */
+export function yearComparison(db: DB, asOf: Date) {
+  const firstRun = (db.prepare("SELECT MIN(as_of) t FROM ingest_runs WHERE status='ok'").get() as Row | undefined)?.t as string | undefined;
+  if (!firstRun) return { asOf: asOf.toISOString(), currentYear: asOf.getUTCFullYear(), years: [], industries: [] };
+  const firstYear = new Date(firstRun).getUTCFullYear();
+  const currentYear = asOf.getUTCFullYear();
+  const cutoff = asOf.toISOString().slice(5, 10); // MM-DD for same-period comparisons
+  const inYtd = (iso: string) => iso.slice(5, 10) <= cutoff;
+  const yearOf = (iso: unknown) => (iso ? Number(String(iso).slice(0, 4)) : NaN);
+
+  const sales = db.prepare("SELECT * FROM sales WHERE sale_date IS NOT NULL").all() as Row[];
+  const soldIds = sales.map((s) => s.listing_id).filter((x) => x != null) as number[];
+  const soldViews = new Map(
+    (soldIds.length ? enrich(db, db.prepare(`SELECT * FROM listings WHERE id IN (${soldIds.map(() => "?").join(",")})`).all(...soldIds) as Row[], DEFAULT_ASSUMPTIONS, asOf) : []).map((v) => [v.id, v]),
+  );
+  const offMarket = db.prepare("SELECT id, industry, status_changed_at FROM listings WHERE status='off_market'").all() as Row[];
+  const listed = db
+    .prepare(
+      `SELECT l.id, l.industry, l.cash_flow_sde, e.occurred_at,
+         (SELECT asking_price FROM price_history p WHERE p.listing_id = l.id ORDER BY observed_at LIMIT 1) AS first_price
+       FROM listing_events e JOIN listings l ON l.id = e.listing_id WHERE e.type = 'listed'`,
+    )
+    .all() as Row[];
+
+  const years = Array.from({ length: currentYear - firstYear + 1 }, (_, i) => firstYear + i).map((y) => {
+    const ys = sales.filter((s) => yearOf(s.sale_date) === y);
+    const yo = offMarket.filter((o) => yearOf(o.status_changed_at) === y);
+    const yl = listed.filter((l) => yearOf(l.occurred_at) === y);
+    const saleDetail = ys.map((s) => {
+      const l = s.listing_id != null ? soldViews.get(Number(s.listing_id)) : undefined;
+      return {
+        price: s.sale_price as number | null,
+        multiple: s.sale_price && l?.cash_flow_sde ? Number(s.sale_price) / Number(l.cash_flow_sde) : null,
+        toAsk: s.sale_price && l?.asking_price ? Number(s.sale_price) / Number(l.asking_price) : null,
+        dom: l?.days_on_market ?? null,
+      };
+    });
+    const ytd = ys.filter((s) => inYtd(String(s.sale_date)));
+    const ytdSales = ytd.length;
+    const ytdOff = yo.filter((o) => inYtd(String(o.status_changed_at))).length;
+    const byInd = new Map<string, number>();
+    for (const s of ys) byInd.set(String(s.industry ?? "Other"), (byInd.get(String(s.industry ?? "Other")) ?? 0) + 1);
+    return {
+      year: y,
+      partial: y === currentYear,
+      sales: ys.length,
+      confirmed: ys.filter((s) => s.verification === "confirmed").length,
+      brokerReported: ys.filter((s) => s.verification === "broker_reported").length,
+      offMarket: yo.length,
+      newListings: yl.length,
+      sellThroughPct: ys.length + yo.length ? (ys.length / (ys.length + yo.length)) * 100 : null,
+      medianSalePrice: median(saleDetail.map((d) => d.price)),
+      medianSaleMultiple: median(saleDetail.map((d) => d.multiple)),
+      medianSaleToAsk: median(saleDetail.map((d) => d.toAsk)),
+      medianDaysOnMarket: median(saleDetail.map((d) => d.dom)),
+      // What sellers were asking: first asking price ÷ cash flow for listings that came to market this year.
+      medianAskingMultiple: median(yl.map((l) => (l.first_price && l.cash_flow_sde ? Number(l.first_price) / Number(l.cash_flow_sde) : null))),
+      samePeriod: {
+        sales: ytdSales,
+        confirmed: ytd.filter((s) => s.verification === "confirmed").length,
+        brokerReported: ytd.filter((s) => s.verification === "broker_reported").length,
+        offMarket: ytdOff,
+        newListings: yl.filter((l) => inYtd(String(l.occurred_at))).length,
+        sellThroughPct: ytdSales + ytdOff ? (ytdSales / (ytdSales + ytdOff)) * 100 : null,
+      },
+      topIndustries: [...byInd.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, count]) => ({ name, count })),
+      // Data before the first crawl only reflects listings already on market then.
+      incomplete: y === firstYear && firstRun.slice(5, 10) > "01-15",
+    };
+  });
+
+  const industryNames = [...new Set(sales.filter((s) => yearOf(s.sale_date) >= firstYear).map((s) => String(s.industry ?? "Other")))];
+  const industries = industryNames
+    .map((name) => {
+      const perYear = years.map((y) => {
+        const n = sales.filter((s) => String(s.industry ?? "Other") === name && yearOf(s.sale_date) === y.year).length;
+        const off = offMarket.filter((o) => String(o.industry) === name && yearOf(o.status_changed_at) === y.year).length;
+        return { year: y.year, sales: n, sharePct: y.sales ? (n / y.sales) * 100 : 0, sellThroughPct: n + off ? (n / (n + off)) * 100 : null };
+      });
+      return { name, total: perYear.reduce((a, b) => a + b.sales, 0), perYear };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  return { asOf: asOf.toISOString(), currentYear, samePeriodEnd: cutoff, years, industries };
+}

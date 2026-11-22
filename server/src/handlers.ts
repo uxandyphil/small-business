@@ -6,7 +6,7 @@ import { DEFAULT_ASSUMPTIONS } from "./finance.js";
 import { COLUMBUS, REGION_COUNTIES } from "./geo.js";
 import { INDUSTRIES } from "./normalize.js";
 import { enrich, FiltersSchema, parseAssumptions, searchListings } from "./query.js";
-import { dashboardStats, mapPoint, median, salesReport } from "./stats.js";
+import { dashboardStats, mapPoint, median, salesReport, yearComparison } from "./stats.js";
 
 type Query = Record<string, unknown>;
 
@@ -117,4 +117,8 @@ export function listByIds(db: ReadDB, ids: number[], query: Query, now: Date) {
   const rows = db.prepare(`SELECT * FROM listings WHERE id IN (${ids.map(() => "?").join(",")})`).all(...ids) as Row[];
   const byId = new Map(enrich(db, rows, parseAssumptions(query), now).map((l) => [l.id, l]));
   return { items: ids.map((id) => byId.get(id)).filter(Boolean) };
+}
+
+export function getYearComparison(db: ReadDB, now: Date) {
+  return yearComparison(db, now);
 }
