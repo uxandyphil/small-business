@@ -5,10 +5,8 @@ import { fileURLToPath } from "node:url";
 import { z, ZodError } from "zod";
 import type { DB, Row } from "./db.js";
 import { DEFAULT_ASSUMPTIONS } from "./finance.js";
-import { COLUMBUS, REGION_RADIUS_MILES } from "./geo.js";
-import { INDUSTRIES } from "./normalize.js";
-import { enrich, FiltersSchema, parseAssumptions, searchListings } from "./query.js";
-import { dashboardStats, mapPoint, median, salesReport } from "./stats.js";
+import { getListingDetail, getMeta, getSales, getSources, getStats, listByIds, listListings } from "./handlers.js";
+import { FiltersSchema, searchListings } from "./query.js";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -37,107 +35,22 @@ export function createApp(db: DB, opts: { now?: () => Date } = {}) {
     next();
   };
 
-  app.get("/api/meta", (_req, res) => {
-    const counties = db.prepare("SELECT county AS name, COUNT(*) c FROM listings WHERE status IN ('active','pending') AND county IS NOT NULL GROUP BY county ORDER BY c DESC").all();
-    const cities = db.prepare("SELECT city AS name, county, COUNT(*) c FROM listings WHERE status IN ('active','pending') AND city IS NOT NULL GROUP BY city ORDER BY c DESC").all();
-    const demo = db.prepare("SELECT COUNT(*) c FROM listing_sources ls JOIN sources s ON s.id=ls.source_id WHERE s.kind='demo'").get() as Row;
-    const real = db.prepare("SELECT COUNT(*) c FROM listing_sources ls JOIN sources s ON s.id=ls.source_id WHERE s.kind!='demo'").get() as Row;
-    const lastRun = db.prepare("SELECT MAX(as_of) t FROM ingest_runs WHERE status='ok'").get() as Row;
-    res.json({
-      industries: INDUSTRIES,
-      counties,
-      cities,
-      region: { center: COLUMBUS, radiusMiles: REGION_RADIUS_MILES },
-      demoMode: Number(demo.c) > 0,
-      realListingCount: Number(real.c),
-      lastUpdated: lastRun.t,
-      defaultAssumptions: DEFAULT_ASSUMPTIONS,
-    });
-  });
-
-  app.get("/api/listings", (req, res) => {
-    const f = FiltersSchema.parse(req.query);
-    const a = parseAssumptions(req.query);
-    const { total, items, all } = searchListings(db, f, a, now());
-    res.json({
-      total,
-      items,
-      summary: {
-        medianAsking: median(all.map((l) => l.asking_price as number)),
-        medianCashFlow: median(all.map((l) => l.cash_flow_sde as number)),
-        medianMultiple: median(all.map((l) => l.finance.multiple)),
-        medianCashOnCash: median(all.map((l) => l.finance.cashOnCashPct)),
-      },
-      mapPoints: req.query.map === "1" ? all.map(mapPoint) : undefined,
-    });
-  });
-
+  app.get("/api/meta", (_req, res) => res.json(getMeta(db)));
+  app.get("/api/listings", (req, res) => res.json(listListings(db, req.query, now())));
   app.get("/api/listings/:id", (req, res) => {
-    const id = z.coerce.number().int().parse(req.params.id);
-    const row = db.prepare("SELECT * FROM listings WHERE id=?").get(id) as Row | undefined;
-    if (!row) return res.status(404).json({ error: "Not found" });
-    const a = parseAssumptions(req.query);
-    const [l] = enrich(db, [row], a, now());
-    const events = db
-      .prepare("SELECT e.*, s.name AS source_name FROM listing_events e LEFT JOIN sources s ON s.id=e.source_id WHERE listing_id=? ORDER BY occurred_at, e.id")
-      .all(id);
-    const history = db.prepare("SELECT observed_at, asking_price, cash_flow_sde, revenue FROM price_history WHERE listing_id=? ORDER BY observed_at").all(id);
-    const peersRows = db.prepare("SELECT * FROM listings WHERE industry=? AND id != ? AND status IN ('active','pending','sold')").all(String(row.industry), id) as Row[];
-    const peers = enrich(db, peersRows, a, now());
-    const activePeers = peers.filter((p) => p.status !== "sold");
-    const soldComps = db
-      .prepare("SELECT s.*, l.cash_flow_sde FROM sales s LEFT JOIN listings l ON l.id = s.listing_id WHERE s.industry=? AND s.sale_price IS NOT NULL AND (s.listing_id IS NULL OR s.listing_id != ?) ORDER BY s.sale_date DESC LIMIT 8")
-      .all(String(row.industry), id) as Row[];
-    const favorite = req.userId ? Boolean(db.prepare("SELECT 1 FROM favorites WHERE user_id=? AND listing_id=?").get(req.userId, id)) : false;
-    res.json({
-      listing: l,
-      events,
-      history,
-      favorite,
-      comparables: {
-        industry: row.industry,
-        activeCount: activePeers.length,
-        medianMultiple: median(activePeers.map((p) => p.finance.multiple)),
-        medianCashOnCash: median(activePeers.map((p) => p.finance.cashOnCashPct)),
-        medianMarginPct: median(activePeers.map((p) => p.finance.marginPct)),
-        medianAsking: median(activePeers.map((p) => p.asking_price as number)),
-        similar: activePeers
-          .filter((p) => p.asking_price && l.asking_price)
-          .sort((x, y) => Math.abs(Math.log(Number(x.asking_price) / Number(l.asking_price))) - Math.abs(Math.log(Number(y.asking_price) / Number(l.asking_price))))
-          .slice(0, 5),
-        soldComps: soldComps.map((s) => ({ ...s, multiple: s.cash_flow_sde ? Number(s.sale_price) / Number(s.cash_flow_sde) : null })),
-      },
-    });
+    const favorite = req.userId ? Boolean(db.prepare("SELECT 1 FROM favorites WHERE user_id=? AND listing_id=?").get(req.userId, Number(req.params.id))) : false;
+    const detail = getListingDetail(db, req.params.id, req.query, now(), favorite);
+    if (!detail) return res.status(404).json({ error: "Not found" });
+    res.json(detail);
   });
-
-  app.get("/api/stats", (req, res) => {
-    const year = z.coerce.number().int().optional().parse(req.query.year);
-    res.json(dashboardStats(db, now(), year));
-  });
-
-  app.get("/api/sales", (req, res) => {
-    const year = z.coerce.number().int().default(now().getUTCFullYear()).parse(req.query.year);
-    res.json(salesReport(db, now(), year));
-  });
-
-  app.get("/api/sources", (_req, res) => {
-    const sources = db
-      .prepare(
-        `SELECT s.id, s.name, s.kind, s.adapter, s.homepage, s.access_method, s.compliance_note, s.enabled, s.last_run_at, s.last_run_status, s.last_run_message,
-           (SELECT COUNT(*) FROM listing_sources ls WHERE ls.source_id=s.id AND ls.present=1) AS live_listings,
-           (SELECT COUNT(*) FROM listing_sources ls WHERE ls.source_id=s.id) AS total_listings,
-           (SELECT COUNT(*) FROM sales x WHERE x.source_id=s.id) AS sales
-         FROM sources s ORDER BY s.enabled DESC, s.kind, s.name`,
-      )
-      .all();
-    const runs = db.prepare("SELECT * FROM ingest_runs ORDER BY id DESC LIMIT 20").all();
-    res.json({ sources, runs });
-  });
+  app.get("/api/stats", (req, res) => res.json(getStats(db, req.query, now())));
+  app.get("/api/sales", (req, res) => res.json(getSales(db, req.query, now())));
+  app.get("/api/sources", (_req, res) => res.json(getSources(db)));
 
   // ---- Favorites
   app.get("/api/favorites", requireUser, (req, res) => {
-    const rows = db.prepare("SELECT l.* FROM favorites f JOIN listings l ON l.id=f.listing_id WHERE f.user_id=? ORDER BY f.created_at DESC").all(req.userId!) as Row[];
-    res.json({ items: enrich(db, rows, parseAssumptions(req.query), now()) });
+    const ids = (db.prepare("SELECT listing_id FROM favorites WHERE user_id=? ORDER BY created_at DESC").all(req.userId!) as Row[]).map((r) => Number(r.listing_id));
+    res.json(listByIds(db, ids, req.query, now()));
   });
   app.put("/api/favorites/:id", requireUser, (req, res) => {
     const id = z.coerce.number().int().parse(req.params.id);

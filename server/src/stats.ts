@@ -1,4 +1,4 @@
-import type { DB, Row } from "./db.js";
+import type { ReadDB as DB, Row } from "./dbtypes.js";
 import { DEFAULT_ASSUMPTIONS } from "./finance.js";
 import { enrich, type ListingView } from "./query.js";
 

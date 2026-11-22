@@ -169,7 +169,7 @@ export function demoUniverse(now = new Date("2026-11-20")): DemoBusiness[] {
       onBroker,
       broker: pickOne(BROKERS),
       realEstate,
-      description: `${descriptor.toLowerCase()} ${baseName.toLowerCase()} serving ${place.city} and greater ${place.county} County since ${yearEstablished}. ${employees} employees${realEstate ? "; real estate included in asking price" : ""}. Synthetic demo listing — not a real business.`,
+      description: `${descriptor} ${baseName.toLowerCase()} serving ${place.city} and greater ${place.county} County since ${yearEstablished}. ${employees} employees${realEstate ? "; real estate included in asking price" : ""}. Synthetic demo listing — not a real business.`,
     });
   }
   cache = out;

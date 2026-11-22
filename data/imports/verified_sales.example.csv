@@ -1,0 +1,2 @@
+business_name,listing_id,industry,city,county,sale_price,sale_date,verification,evidence_type,evidence_url,evidence_note
+Example HVAC Contractor,EX-001,HVAC,Westerville,Franklin,"$1,050,000",2026-11-02,confirmed,press_release,https://news.example/acquisition,Buyer announced the acquisition

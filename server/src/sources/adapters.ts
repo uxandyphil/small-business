@@ -1,11 +1,17 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { dirname, isAbsolute, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import * as cheerio from "cheerio";
 import { politeFetch, ComplianceError } from "./compliance.js";
 import { mapRow, mapSaleRow, parseCsv } from "./mapped.js";
 import type { FetchResult, RawListing, SourceAdapter, SourceContext } from "./types.js";
 import { demoAdapter } from "./demo.js";
 
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+/** Config paths are relative to the repository root. */
+const fromRoot = (p: string | undefined) => (p == null ? undefined : isAbsolute(p) ? p : resolve(REPO_ROOT, p));
 
 /**
  * CSV import: for manual exports, broker-provided spreadsheets, or files you
@@ -14,15 +20,18 @@ const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 const csvAdapter: SourceAdapter = {
   id: "csv",
   async fetch(ctx) {
-    const listingsPath = str(ctx.config.listingsPath);
-    const salesPath = str(ctx.config.salesPath);
+    const listingsPath = fromRoot(str(ctx.config.listingsPath));
+    const salesPath = fromRoot(str(ctx.config.salesPath));
     const fieldMap = (ctx.config.fieldMap ?? {}) as Record<string, string[]>;
-    const listings = listingsPath
+    const notes: string[] = [];
+    for (const p of [listingsPath, salesPath]) if (p && !existsSync(p)) notes.push(`File not found, skipped: ${p}`);
+    if ([listingsPath, salesPath].every((p) => !p || !existsSync(p))) throw new Error(notes.join("; ") || "csv source has no listingsPath or salesPath");
+    const listings = listingsPath && existsSync(listingsPath)
       ? parseCsv(await readFile(listingsPath, "utf8")).map((r) => mapRow(r, fieldMap)).filter(Boolean) as RawListing[]
       : [];
-    const sales = salesPath ? parseCsv(await readFile(salesPath, "utf8")).map(mapSaleRow).filter((s) => s !== null) : [];
+    const sales = salesPath && existsSync(salesPath) ? parseCsv(await readFile(salesPath, "utf8")).map(mapSaleRow).filter((s) => s !== null) : [];
     // A CSV is a full snapshot only if the operator says so.
-    return { listings, sales, complete: ctx.config.complete === true };
+    return { listings, sales, complete: ctx.config.complete === true, notes };
   },
 };
 
@@ -32,7 +41,7 @@ const csvAdapter: SourceAdapter = {
  */
 async function loadJson(ctx: SourceContext, urlKey = "url", pathKey = "path"): Promise<unknown> {
   const url = str(ctx.config[urlKey]);
-  const path = str(ctx.config[pathKey]);
+  const path = fromRoot(str(ctx.config[pathKey]));
   if (path) return JSON.parse(await readFile(path, "utf8"));
   if (!url) throw new Error("json_feed requires config.url or config.path");
   const text = await politeFetch(url, {

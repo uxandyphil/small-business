@@ -1,0 +1,3 @@
+id,title,industry,city,county,state,asking_price,revenue,cash_flow,ebitda,employees,year_established,listed_at,url,broker,status,financials_basis
+EX-001,Example HVAC Contractor,HVAC,Westerville,Franklin,OH,"$1,150,000",2.4M,$410K,,14,2008,2026-10-01,https://broker.example/listings/ex-001,Example Brokerage,active,broker_verified
+EX-002,Example Neighborhood Pizzeria,Restaurant,Grove City,Franklin,OH,325000,780000,145000,,9,15 years,2026-09-15,https://broker.example/listings/ex-002,Example Brokerage,under contract,seller_reported

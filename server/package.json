@@ -7,6 +7,7 @@
     "start": "tsx --disable-warning=ExperimentalWarning src/index.ts",
     "seed": "tsx --disable-warning=ExperimentalWarning src/cli.ts seed",
     "ingest": "tsx --disable-warning=ExperimentalWarning src/cli.ts ingest",
+    "sources": "tsx --disable-warning=ExperimentalWarning src/cli.ts",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
     "typecheck": "tsc --noEmit"
   },
