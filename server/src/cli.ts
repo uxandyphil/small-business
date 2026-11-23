@@ -17,19 +17,27 @@ async function seed() {
   for (const suffix of ["", "-wal", "-shm"]) rmSync(DEFAULT_DB_PATH + suffix, { force: true });
   const db = openDb();
   registerSources(db);
-  // Weekly crawls (Mondays) from Jan 2 2023 through Nov 16 2026; records monthly.
-  const start = new Date("2023-01-02T14:00:00Z");
-  const end = new Date("2026-11-16T14:00:00Z");
+  // Simulated crawl history: weekly (Mondays) from Jan 2 2023, then daily for the
+  // last 5 weeks up to now, so the demo market is current on every rebuild.
+  // SEED_UNTIL=2026-11-16 pins the end date for reproducible builds.
+  const DAY = 86400e3;
+  const end = process.env.SEED_UNTIL ? new Date(process.env.SEED_UNTIL + "T14:00:00Z") : new Date();
+  const dailyFrom = new Date(end.getTime() - 35 * DAY);
+  const crawls: Date[] = [];
+  for (let d = new Date("2023-01-02T14:00:00Z"); d < dailyFrom; d = new Date(d.getTime() + 7 * DAY)) crawls.push(d);
+  for (let d = new Date(end.getTime() - 35 * DAY); d <= end; d = new Date(d.getTime() + DAY)) crawls.push(d);
+  if (crawls.at(-1)!.getTime() !== end.getTime()) crawls.push(end);
   let weeks = 0;
-  for (let d = new Date(start); d <= end; d = new Date(d.getTime() + 7 * 86400e3)) {
+  for (const [i, d] of crawls.entries()) {
     await runSource(db, "demo-marketplace", d);
     await runSource(db, "demo-broker", d);
-    if (weeks % 4 === 0 || d.getTime() + 7 * 86400e3 > end.getTime()) await runSource(db, "demo-records", d);
-    weeks++;
+    const daily = d >= dailyFrom;
+    if (daily || weeks % 4 === 0 || i === crawls.length - 1) await runSource(db, "demo-records", d);
+    if (!daily) weeks++;
   }
   const counts = db.prepare("SELECT status, COUNT(*) c FROM listings GROUP BY status").all() as Row[];
   const sales = db.prepare("SELECT verification, COUNT(*) c FROM sales GROUP BY verification").all() as Row[];
-  console.log(`Seeded ${weeks} weekly crawls into ${DEFAULT_DB_PATH}`);
+  console.log(`Seeded ${crawls.length} crawls (${weeks} weekly, then daily) through ${end.toISOString().slice(0, 10)} into ${DEFAULT_DB_PATH}`);
   console.log("Listings by status:", Object.fromEntries(counts.map((r) => [r.status, r.c])));
   console.log("Sales by verification:", Object.fromEntries(sales.map((r) => [r.verification, r.c])));
 }
@@ -79,8 +87,8 @@ function exportStatic(out: string | undefined) {
   db.close();
   const snap = new DatabaseSync(target);
   // Never publish personal data: device ids, favorites, alerts, emails, notifications.
+  // (Source configs stay: they hold URLs/selectors only; keys live in env vars.)
   snap.exec(`DELETE FROM notifications; DELETE FROM alerts; DELETE FROM favorites; DELETE FROM users;
-             UPDATE sources SET config_json='{}';
              PRAGMA journal_mode=DELETE; VACUUM;`);
   const n = snap.prepare("SELECT COUNT(*) c FROM listings").get() as Row;
   snap.close();

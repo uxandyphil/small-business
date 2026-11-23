@@ -1,20 +1,35 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { api, BASIS_LABEL, daysAgo, money, mult, pct, STATUS_LABEL, type Listing } from "../lib";
+import { api, BASIS_LABEL, money, mult, pct, STATUS_LABEL, type Listing } from "../lib";
 
-export function Badge({ tone = "neutral", children, title }: { tone?: "neutral" | "good" | "warn" | "bad" | "brand"; children: ReactNode; title?: string }) {
+export function Badge({ tone = "neutral", children, title }: { tone?: "neutral" | "good" | "warn" | "bad" | "brand" | "hot"; children: ReactNode; title?: string }) {
   const cls = {
     neutral: "bg-surface-2 text-ink-2",
     good: "bg-good-soft text-good",
     warn: "bg-warn-soft text-warn",
     bad: "bg-bad-soft text-bad",
     brand: "bg-brand-soft text-brand",
+    hot: "bg-hot-soft text-hot",
   }[tone];
   return (
     <span title={title} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${cls}`}>
       {children}
     </span>
   );
+}
+
+/** "🔥 Hot new" for the first 3 days on market, then "New" until day 14. */
+export function NewBadge({ l }: { l: Pick<Listing, "hot_new" | "new_listing" | "days_listed"> }) {
+  if (l.hot_new) {
+    const when = l.days_listed === 0 ? "today" : l.days_listed === 1 ? "yesterday" : `${l.days_listed} days ago`;
+    return (
+      <Badge tone="hot" title={`Just listed: came to market ${when}`}>
+        <span aria-hidden>🔥</span> Hot new
+      </Badge>
+    );
+  }
+  if (l.new_listing) return <Badge tone="brand" title={`Listed ${l.days_listed} days ago`}>New</Badge>;
+  return null;
 }
 
 export function StatusBadge({ status }: { status: Listing["status"] }) {
@@ -125,11 +140,10 @@ export const glyph = (industry: string) => INDUSTRY_GLYPH[industry] ?? "🏢";
 
 export function ListingCard({ l, favorite = false, highlight }: { l: Listing; favorite?: boolean; highlight?: boolean }) {
   const f = l.finance;
-  const isNew = daysAgo(l.first_seen_at) <= 14 && (l.status === "active" || l.status === "pending");
   return (
     <Link
       to={`/listing/${l.id}`}
-      className={`card group block p-4 transition hover:shadow-md ${highlight ? "ring-2 ring-[var(--brand)]" : ""}`}
+      className={`card group block p-4 transition hover:shadow-md ${highlight ? "ring-2 ring-[var(--brand)]" : l.hot_new ? "ring-1 ring-[var(--hot)]" : ""}`}
     >
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-xl" aria-hidden>
@@ -138,7 +152,7 @@ export function ListingCard({ l, favorite = false, highlight }: { l: Listing; fa
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <StatusBadge status={l.status} />
-            {isNew && <Badge tone="brand">New</Badge>}
+            <NewBadge l={l} />
             {l.price_reduced && <Badge tone="bad">↓ Price cut</Badge>}
             {l.is_franchise && <Badge>Franchise</Badge>}
           </div>

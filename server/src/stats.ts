@@ -61,6 +61,7 @@ export function dashboardStats(db: DB, asOf: Date, year = asOf.getUTCFullYear())
       activeListings: active.length,
       pending: active.filter((l) => l.status === "pending").length,
       newLast30: active.filter((l) => days(l.first_seen_at) <= 30).length,
+      hotNew: active.filter((l) => l.hot_new).length,
       priceCutsLast30: Number((db
         .prepare("SELECT COUNT(DISTINCT listing_id) c FROM listing_events WHERE type='price_change' AND CAST(new_value AS REAL) < CAST(old_value AS REAL) AND occurred_at >= ?")
         .get(new Date(asOf.getTime() - 30 * 86400e3).toISOString()) as Row).c),
@@ -105,6 +106,7 @@ export function mapPoint(l: ListingView) {
     cashFlow: l.cash_flow_sde,
     roi: l.finance.cashOnCashPct,
     status: l.status,
+    hot: l.hot_new,
   };
 }
 

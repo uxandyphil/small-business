@@ -24,7 +24,11 @@ To publish:
 2. Merge this code into `main`. `.github/workflows/pages.yml` builds and deploys on every push to `main`. You can also run it from the **Actions** tab with **Run workflow**.
 3. The site appears at `https://<your-username>.github.io/<repo-name>/` (shown on the Pages settings page and in the workflow run).
 
-Notes: a Pages site is public even if the repo is private, and Pages on private repos requires a paid GitHub plan. The workflow currently builds the synthetic demo data. Once real sources are connected, replace the `npm run seed` step with your ingest step. The snapshot only changes when the workflow runs.
+**Daily updates.** The workflow also runs every day at about 5:17 AM Eastern (and can be started manually from the Actions tab). In demo mode it regenerates the synthetic market up to the current date: new listings appear, prices drop and sales close as the calendar moves, while past history stays identical. For real data, set the repository variable `DATA_MODE=live` and `LIVE_SOURCES` (space-separated source ids, e.g. `bizbuysell public-records`), and put feed URLs and keys in repository secrets. Each run then downloads the previously published snapshot, ingests today's data on top of it and republishes, so listing history and price changes accumulate. GitHub pauses scheduled workflows in public repos after 60 days without repository activity; re-enable it from the Actions tab if that happens.
+
+**"Hot new" listings.** Businesses that came to market in the last 3 days get a 🔥 Hot new tag (then "New" until day 14). The date used is the earlier of the source's listed date and when we first saw the listing, so an old listing from a newly added source isn't tagged.
+
+Notes: a Pages site is public even if the repo is private, and Pages on private repos requires a paid GitHub plan. The snapshot only changes when the workflow runs.
 
 Map tiles come from OpenStreetMap and need no key. OSM's tile policy only covers light use, so for a busy site set `VITE_TILE_URL` (and `VITE_TILE_ATTRIBUTION`) at build time to a provider you have an account with, e.g. MapTiler or Stadia Maps.
 

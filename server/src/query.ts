@@ -35,6 +35,7 @@ export const FiltersSchema = z.object({
   realEstate: z.enum(["any", "only", "exclude"]).optional(),
   hasFinancials: bool,
   newWithinDays: num,
+  hotNew: bool,
   priceReduced: bool,
   sort: z
     .enum(["newest", "price_asc", "price_desc", "cash_flow_desc", "revenue_desc", "roi_desc", "owner_income_desc", "multiple_asc", "dscr_desc", "updated"])
@@ -65,8 +66,26 @@ export function parseAssumptions(q: Record<string, unknown>): FinanceAssumptions
   return out;
 }
 
+/** "Hot new": came to market within this many days. "New": within NEW_DAYS. */
+export const HOT_NEW_DAYS = 3;
+export const NEW_DAYS = 14;
+
+/**
+ * Days since a listing came to market: the earlier of the source's listed date
+ * and when we first saw it. A listing we only just discovered that was listed
+ * months ago is therefore not "new".
+ */
+export function daysListed(l: Row, asOf: Date): number {
+  const firstSeen = new Date(String(l.first_seen_at)).getTime();
+  const listed = l.listed_at ? new Date(String(l.listed_at) + (String(l.listed_at).length === 10 ? "T00:00:00Z" : "")).getTime() : firstSeen;
+  return Math.max(0, (asOf.getTime() - Math.min(firstSeen, listed)) / 86400e3);
+}
+
 export interface ListingView extends Row {
   id: number;
+  hot_new: boolean;
+  new_listing: boolean;
+  days_listed: number;
   finance: FinanceResult;
   sources: Row[];
   price_reduced: boolean;
@@ -109,10 +128,17 @@ export function enrich(db: DB, rows: Row[], a: FinanceAssumptions, asOf: Date): 
       sources: srcRows.filter((s) => Number(s.listing_id) === id).map(({ listing_id: _, ...s }) => ({ ...s, present: Boolean(s.present) })),
       original_price: orig,
       price_reduced: orig != null && price != null && price < orig - 1,
+      ...newness(r, asOf),
       days_on_market: Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 86400e3)),
       sale: saleMap.get(id) ?? null,
     };
   });
+}
+
+function newness(r: Row, asOf: Date) {
+  const d = daysListed(r, asOf);
+  const onMarket = r.status === "active" || r.status === "pending";
+  return { days_listed: Math.floor(d), hot_new: onMarket && d <= HOT_NEW_DAYS, new_listing: onMarket && d <= NEW_DAYS };
 }
 
 /** In-memory predicate shared by search and alert matching. */
@@ -145,6 +171,7 @@ export function matches(l: ListingView, f: Filters, asOf: Date): boolean {
   if (f.realEstate === "exclude" && l.real_estate_included) return false;
   if (f.hasFinancials && (price == null || (cf == null && l.ebitda == null))) return false;
   if (f.newWithinDays != null && (asOf.getTime() - new Date(String(l.first_seen_at)).getTime()) / 86400e3 > f.newWithinDays) return false;
+  if (f.hotNew && !l.hot_new) return false;
   if (f.priceReduced && !l.price_reduced) return false;
   return true;
 }

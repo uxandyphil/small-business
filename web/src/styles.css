@@ -20,6 +20,8 @@
   --warn-soft: #fff3d6;
   --bad: #b42323;
   --bad-soft: #fdeaea;
+  --hot: #b3410e;
+  --hot-soft: #ffeadb;
   --series-1: #2a78d6; /* blue  – new / primary */
   --series-2: #eb6834; /* orange – off-market */
   --series-3: #1baf7a; /* aqua  – sold */
@@ -52,6 +54,8 @@
     --warn-soft: #33280f;
     --bad: #e66767;
     --bad-soft: #3a1a1a;
+    --hot: #ff9a5c;
+    --hot-soft: #3d2312;
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
@@ -83,6 +87,8 @@
   --warn-soft: #33280f;
   --bad: #e66767;
   --bad-soft: #3a1a1a;
+  --hot: #ff9a5c;
+  --hot-soft: #3d2312;
   --series-1: #3987e5;
   --series-2: #d95926;
   --series-3: #199e70;
@@ -113,6 +119,8 @@
   --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
+  --color-hot: var(--hot);
+  --color-hot-soft: var(--hot-soft);
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 

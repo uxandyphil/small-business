@@ -1,10 +1,19 @@
-# Builds the read-only version of the site and publishes it to GitHub Pages.
-# One-time setup: repo Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+# Builds the read-only site and publishes it to GitHub Pages, on every push to
+# main and once a day so listings, "hot new" tags and sales stay current.
+# One-time setup: Settings -> Pages -> Source: "GitHub Actions".
+#
+# Data modes (repo Settings -> Secrets and variables -> Actions -> Variables):
+#   DATA_MODE unset  -> synthetic demo market, regenerated up to today on each run
+#   DATA_MODE=live   -> continue from the last published snapshot and run real
+#                       sources (LIVE_SOURCES, space-separated ids), so history
+#                       accumulates day by day. Feed URLs/keys go in Secrets.
 name: Deploy read-only site to GitHub Pages
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 10 * * *" # daily, about 5:17 AM Eastern
   workflow_dispatch: # "Run workflow" button on the Actions tab
 
 permissions:
@@ -14,7 +23,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -27,9 +36,27 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      # Builds the database. Today this is the synthetic demo dataset; replace this
-      # step with `npm run ingest` once real sources are connected.
-      - run: npm run seed
+      - id: pages
+        uses: actions/configure-pages@v5
+      - name: Update data
+        env:
+          DATA_MODE: ${{ vars.DATA_MODE }}
+          LIVE_SOURCES: ${{ vars.LIVE_SOURCES }}
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
+          BIZBUYSELL_FEED_URL: ${{ secrets.BIZBUYSELL_FEED_URL }}
+          BIZBUYSELL_API_KEY: ${{ secrets.BIZBUYSELL_API_KEY }}
+          BIZQUEST_FEED_URL: ${{ secrets.BIZQUEST_FEED_URL }}
+          BIZQUEST_API_KEY: ${{ secrets.BIZQUEST_API_KEY }}
+        run: |
+          if [ "$DATA_MODE" = "live" ]; then
+            mkdir -p data
+            curl -fsSL "$SITE_URL/tracker.db" -o data/tracker.db || echo "::warning::No previous snapshot found; starting a fresh history"
+            for s in $LIVE_SOURCES; do npm run sources -- enable "$s"; done
+            for s in demo-marketplace demo-broker demo-records; do npm run sources -- disable "$s"; done
+            npm run ingest || echo "::warning::One or more sources failed; publishing what was collected"
+          else
+            npm run seed
+          fi
       - run: npm run build:static
       - uses: actions/upload-pages-artifact@v3
         with:

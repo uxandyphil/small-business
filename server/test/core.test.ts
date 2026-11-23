@@ -7,6 +7,7 @@ import { resolveLocation } from "../src/geo.js";
 import { openDb, type DB, type Row } from "../src/db.js";
 import { runSource } from "../src/ingest.js";
 import { salesReport, yearComparison } from "../src/stats.js";
+import { enrich } from "../src/query.js";
 import { ADAPTERS } from "../src/sources/adapters.js";
 import type { FetchResult, RawListing } from "../src/sources/types.js";
 
@@ -215,6 +216,21 @@ describe("ingestion pipeline", () => {
     expect(food).toMatchObject({ sales: 1, confirmed: 1, offMarket: 1, sellThroughPct: 50, medianSalePrice: 450_000 });
     expect(r.industries[0].name).toBe("Restaurants & Food"); // most sold first
     expect(r.industries.find((i) => i.name === "Home & Trade Services")).toMatchObject({ sales: 0, offMarket: 1, sellThroughPct: 0 });
+  });
+
+  it("tags just-listed businesses as hot new, then new", async () => {
+    next = {
+      listings: [listing(), listing({ externalId: "OLD", title: "Old Bakery in Dublin", industry: "Bakery", city: "Dublin", listedAt: "2025-10-01" })],
+      complete: true,
+    };
+    await runSource(db, "t1", day(0));
+    const at = (n: number) => {
+      const rows = db.prepare("SELECT * FROM listings ORDER BY id").all() as Row[];
+      return enrich(db, rows, DEFAULT_ASSUMPTIONS, day(n)).map((l) => [l.hot_new, l.new_listing]);
+    };
+    expect(at(2)).toEqual([[true, true], [false, false]]); // old listing we only just discovered is not new
+    expect(at(5)).toEqual([[false, true], [false, false]]);
+    expect(at(20)).toEqual([[false, false], [false, false]]);
   });
 
   it("compares years like for like", async () => {

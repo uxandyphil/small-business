@@ -18,6 +18,7 @@ interface Stats {
     activeListings: number;
     pending: number;
     newLast30: number;
+    hotNew: number;
     priceCutsLast30: number;
     medianAsking: number | null;
     medianCashFlow: number | null;
@@ -64,7 +65,20 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Kpi label="For sale now" value={k.activeListings} sub={`${k.pending} under contract · ${k.newLast30} new in 30 days`} />
+        <Kpi
+          label="For sale now"
+          value={k.activeListings}
+          sub={
+            <>
+              {k.hotNew > 0 && (
+                <Link to="/browse?hotNew=true&sort=newest" className="font-bold text-hot">
+                  🔥 {k.hotNew} hot new ·{" "}
+                </Link>
+              )}
+              {k.newLast30} new in 30 days · {k.pending} under contract
+            </>
+          }
+        />
         <Kpi label="Median asking" value={money(k.medianAsking, { compact: true })} sub={`${money(k.totalAsking, { compact: true })} total on market`} />
         <Kpi label="Median cash flow" value={money(k.medianCashFlow, { compact: true })} sub="Seller-reported SDE" />
         <Kpi label="Median multiple" value={mult(k.medianMultiple)} sub="Asking ÷ cash flow" hint="Lower means you pay less per dollar of earnings" />
@@ -163,7 +177,11 @@ export default function Dashboard() {
         </Section>
       </div>
 
-      <Section title="Newly listed" action={<Link to="/browse?sort=newest" className="text-sm font-semibold text-brand">All new →</Link>}>
+      <Section
+        title={k.hotNew > 0 ? `🔥 Just listed: ${k.hotNew} hot new` : "Newly listed"}
+        subtitle="Businesses that came to market most recently. “Hot new” means listed in the last 3 days."
+        action={<Link to="/browse?sort=newest" className="text-sm font-semibold text-brand">All new →</Link>}
+      >
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {data.recentlyListed.map((l) => (
             <ListingCard key={l.id} l={l} favorite={favIds.has(l.id)} />
