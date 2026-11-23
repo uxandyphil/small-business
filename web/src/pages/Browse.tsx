@@ -239,6 +239,10 @@ export default function Browse() {
       </Group>
       <Group title="Activity" defaultOpen={false}>
         <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={get("hotNew") === "true"} onChange={(e) => set("hotNew", e.target.checked ? "true" : null)} />
+          🔥 Hot new (last 3 days)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={get("newWithinDays") === "14"} onChange={(e) => set("newWithinDays", e.target.checked ? "14" : null)} />
           Newly listed (14 days)
         </label>
@@ -329,6 +333,13 @@ export default function Browse() {
             <span>
               <b className="text-lg text-ink">{data?.total ?? "…"}</b> businesses
             </span>
+            <button
+              onClick={() => set("hotNew", get("hotNew") === "true" ? null : "true")}
+              aria-pressed={get("hotNew") === "true"}
+              className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${get("hotNew") === "true" ? "bg-[var(--hot)] text-white" : "bg-hot-soft text-hot"}`}
+            >
+              🔥 Hot new only
+            </button>
             {data && (
               <>
                 <span>Median ask <b className="text-ink">{money(data.summary.medianAsking, { compact: true })}</b></span>

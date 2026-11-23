@@ -62,6 +62,11 @@ export interface Listing {
   original_price: number | null;
   price_reduced: boolean;
   days_on_market: number;
+  /** Came to market in the last 3 days. */
+  hot_new: boolean;
+  /** Came to market in the last 14 days. */
+  new_listing: boolean;
+  days_listed: number;
   sale: Sale | null;
 }
 
@@ -77,6 +82,7 @@ export interface MapPoint {
   cashFlow: number | null;
   roi: number | null;
   status: string;
+  hot?: boolean;
 }
 
 export interface Meta {

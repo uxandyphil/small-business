@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { analyzeDeal, DEFAULT_ASSUMPTIONS, type FinanceAssumptions } from "../../../server/src/finance";
 import { PriceHistoryChart } from "../components/charts";
 import { MapView } from "../components/MapView";
-import { Badge, BasisBadge, FavoriteButton, glyph, ListingCard, Loading, Section, StatusBadge, VerificationBadge } from "../components/ui";
+import { Badge, BasisBadge, FavoriteButton, glyph, ListingCard, Loading, NewBadge, Section, StatusBadge, VerificationBadge } from "../components/ui";
 import { date, EVIDENCE_LABEL, money, mult, pct, STATUS_LABEL, useApi, type Listing, type Sale } from "../lib";
 
 interface EventRow {
@@ -191,6 +191,7 @@ export default function ListingDetail() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap gap-1.5">
               <StatusBadge status={l.status} />
+              <NewBadge l={l} />
               <BasisBadge basis={l.financials_basis} />
               {l.price_reduced && <Badge tone="bad">↓ {pct(((l.original_price! - l.asking_price!) / l.original_price!) * 100)} since first seen</Badge>}
               {l.is_franchise && <Badge>Franchise</Badge>}

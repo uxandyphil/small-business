@@ -82,11 +82,12 @@ export function MapView({
                 key={p.id}
                 center={[p.lat! + dy, p.lng! + dx]}
                 radius={hot ? r + 3 : r}
-                pathOptions={{ color: hot ? "var(--ink)" : "var(--surface)", weight: hot ? 2.5 : 1.5, fillColor: tierColor(p.roi), fillOpacity: 0.9 }}
+                pathOptions={{ color: hot ? "var(--ink)" : p.hot ? "var(--hot)" : "var(--surface)", weight: hot || p.hot ? 2.5 : 1.5, fillColor: tierColor(p.roi), fillOpacity: 0.9 }}
                 eventHandlers={{ mouseover: () => onHover?.(p.id), mouseout: () => onHover?.(null) }}
               >
                 <Popup>
                   <div className="min-w-48 text-xs">
+                    {p.hot && <div className="mb-0.5 text-[11px] font-bold text-hot">🔥 Hot new</div>}
                     <Link to={`/listing/${p.id}`} className="block text-sm font-semibold text-brand">
                       {p.title}
                     </Link>
@@ -113,7 +114,9 @@ export function MapView({
             </span>
           ))}
         </div>
-        <div className="mt-1 text-muted">Pins are city-level (approx.)</div>
+        <div className="mt-1 text-muted">
+          <span className="font-semibold text-hot">○</span> orange ring = hot new · pins are city-level (approx.)
+        </div>
       </div>
     </div>
   );

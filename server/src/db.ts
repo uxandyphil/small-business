@@ -117,7 +117,8 @@ CREATE TABLE IF NOT EXISTS sales (
   evidence_note    TEXT,
   source_id        TEXT REFERENCES sources(id),
   recorded_at      TEXT NOT NULL,
-  UNIQUE (source_id, business_name, sale_date)
+  -- Two different businesses can share a name and closing date; listing_id tells them apart.
+  UNIQUE (source_id, business_name, sale_date, listing_id)
 );
 
 -- Lightweight anonymous users (device id) for favorites and alerts.

@@ -99,23 +99,32 @@ export interface DemoBusiness {
 const DAY = 86400e3;
 const round = (n: number, to: number) => Math.round(n / to) * to;
 
+// Businesses arrive as a random (Poisson) stream from START to HORIZON. Each
+// business's whole life (listing, price cuts, sale or disappearance) is fixed at
+// generation, and visibility is decided by the crawl date. So the demo market
+// moves forward with the calendar while its past never changes.
+const START = new Date("2022-07-01").getTime();
+const HORIZON = new Date("2030-12-31").getTime();
+const MEAN_DAYS_BETWEEN_LISTINGS = 2.4;
+
 let cache: DemoBusiness[] | null = null;
-export function demoUniverse(now = new Date("2026-11-20")): DemoBusiness[] {
+export function demoUniverse(): DemoBusiness[] {
   if (cache) return cache;
   const rnd = mulberry32(20260101);
   const between = (a: number, b: number) => a + (b - a) * rnd();
   const pickOne = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
-  const start = new Date("2022-07-01").getTime();
-  const end = new Date("2026-11-14").getTime();
   const covered = PLACES.filter((p) => REGION_COUNTIES.includes(p.county));
   const weighted = (covered.length ? covered : PLACES).flatMap((p) => (p.city === "Columbus" ? Array(6).fill(p) : [p]));
   const out: DemoBusiness[] = [];
-  for (let i = 0; i < 640; i++) {
+  let arrival = START;
+  for (let i = 0; ; i++) {
+    arrival += -Math.log(1 - rnd()) * MEAN_DAYS_BETWEEN_LISTINGS * DAY;
+    if (arrival > HORIZON) break;
     const prof = pickOne(PROFILES);
     const outOfRegion = rnd() < 0.04;
     const place = outOfRegion ? pickOne(OUT_OF_REGION) : pickOne(weighted);
-    const listedAt = new Date(start + (end - start) * Math.pow(rnd(), 0.9));
-    const yr = listedAt.getUTCFullYear();
+    const listedAt = new Date(arrival);
+    const yr = Math.min(listedAt.getUTCFullYear(), 2026); // trends hold flat after 2026
     const revenue = round(between(...prof.revenue), 5000);
     const sde = round(revenue * between(...prof.margin), 1000);
     // Gentle market drift so year-over-year comparisons have something to show.
@@ -140,23 +149,13 @@ export function demoUniverse(now = new Date("2026-11-20")): DemoBusiness[] {
 
     // Lifecycle
     const durationDays = between(50, 330);
-    const endCandidate = new Date(listedAt.getTime() + durationDays * DAY);
-    let outcome: DemoBusiness["outcome"] = "active";
-    let endAt: Date | null = null;
-    if (endCandidate < now) {
-      const r = rnd();
-      const soldP = Math.min(0.85, 0.55 * (DEMAND[prof.industry]?.[yr] ?? 1));
-      outcome = r < soldP * 0.55 ? "sold_confirmed" : r < soldP ? "sold_broker" : "vanished";
-      endAt = endCandidate;
-    }
-    const pendingAt =
-      outcome === "sold_confirmed" || outcome === "sold_broker"
-        ? new Date(endAt!.getTime() - between(20, 45) * DAY)
-        : outcome === "active" && rnd() < 0.08
-          ? new Date(now.getTime() - between(3, 25) * DAY)
-          : null;
+    const endAt = new Date(listedAt.getTime() + durationDays * DAY);
+    const r = rnd();
+    const soldP = Math.min(0.85, 0.55 * (DEMAND[prof.industry]?.[yr] ?? 1));
+    const outcome: DemoBusiness["outcome"] = r < soldP * 0.55 ? "sold_confirmed" : r < soldP ? "sold_broker" : "vanished";
+    const pendingAt = outcome !== "vanished" ? new Date(endAt.getTime() - between(20, 45) * DAY) : null;
     const priceAt = (d: Date) => schedule.filter((s) => s.at <= d).at(-1)?.price ?? initialPrice;
-    const saleDate = endAt && outcome !== "vanished" ? new Date(endAt.getTime() - between(0, 6) * DAY) : null;
+    const saleDate = outcome !== "vanished" ? new Date(endAt.getTime() - between(0, 6) * DAY) : null;
     const salePrice =
       saleDate && (outcome === "sold_confirmed" || rnd() < 0.5) ? round(priceAt(saleDate) * between(0.82, 0.99), 5000) : null;
     const yearEstablished = Math.round(between(1972, 2021));
